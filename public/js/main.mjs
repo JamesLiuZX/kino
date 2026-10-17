@@ -191,6 +191,7 @@ on("compose", (req) => {
 })
 
 on("mode", () => renderChrome())
+on("open-task", ({ task, values }) => openTask(task, values))
 
 // ---------------------------------------------------------------- live updates
 

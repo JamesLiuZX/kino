@@ -8,6 +8,7 @@ import { h, icon, api, upload, toast, fail, store, aspectGlyph, fmtSeconds, repl
 import { state, on, appById, cameraById, styleById, isDemo, watched, viewState } from "./state.mjs"
 import { cameraThumb, openCameraSheet, STYLE_SWATCH } from "./pickers.mjs"
 import { openLightbox, ring, download } from "./media.mjs"
+import { openRecorder } from "./recorder.mjs"
 
 // ---------------------------------------------------------------- content
 
@@ -130,7 +131,7 @@ export const TASKS = {
     stage: "talk",
     steps: [
       { id: "image", kind: "photo", title: "A face", hint: "A clear, front-facing photo works best.", accept: "image", required: true },
-      { id: "audio", kind: "photo", title: "The voice", hint: "An mp3 or wav of what they say, up to 15 seconds.", accept: "audio", required: true },
+      { id: "audio", kind: "photo", title: "The voice", hint: "Record it here, or add an mp3 or wav of what they say, up to 15 seconds.", accept: "audio", required: true },
       { id: "prompt", kind: "prompt", title: "How they look while speaking", placeholder: "Warm and friendly, small nods, natural blinking", optional: true },
     ],
     app: () => "talk",
@@ -210,6 +211,7 @@ export function mountFlow(root, taskId) {
   const ctaEl = h("div.flow-cta")
   const stage = h("div.stage")
   const below = h("div.stage-below", { style: { display: "grid", gap: "14px" } })
+  const historyEl = h("section.task-history")
   const stepEls = new Map()
 
   root.append(
@@ -224,6 +226,7 @@ export function mountFlow(root, taskId) {
         h("p.rise", { style: { "--d": "0.25s" } }, task.blurb),
       ),
       h("div.flow-grid", {}, h("div", { style: { display: "grid", gap: "12px", alignContent: "start" } }, stepsEl, ctaEl), h("div.stage-col", {}, stage, below)),
+      historyEl,
     ),
   )
 
@@ -364,15 +367,17 @@ export function mountFlow(root, taskId) {
     }
     const input = h("input", { type: "file", accept: accepts.map((k) => `${k}/*`).join(","), hidden: true, onchange: (e) => e.target.files[0] && addFile(e.target.files[0], s) })
     const progress = uploads.get(s.id)
+    const audio = s.accept === "audio"
     const tiles = [
+      audio && progress === undefined ? h("button.pick.upload", { type: "button", onclick: () => openRecorder({ onDone: (file) => addFile(file, s) }), title: "Record with your microphone" }, icon("mic"), h("span", {}, "Record")) : null,
       h(
         "button.pick.upload",
         { type: "button", onclick: () => input.click(), title: "Upload from this computer" },
-        progress !== undefined ? h("span", {}, `${Math.round(progress * 100)}%`) : icon(s.accept === "audio" ? "mic" : "upload"),
-        progress !== undefined ? h("span", {}, "Uploading") : h("span", {}, s.accept === "audio" ? "Add audio" : "Upload"),
+        progress !== undefined ? h("span", {}, `${Math.round(progress * 100)}%`) : icon("upload"),
+        progress !== undefined ? h("span", {}, "Uploading") : h("span", {}, audio ? "Add a file" : "Upload"),
         input,
       ),
-      ...[...brand, ...recent].slice(0, 7).map((a) =>
+      ...[...brand, ...recent].slice(0, audio ? 6 : 7).map((a) =>
         h(
           `button.pick${a.id === selected ? ".selected" : ""}${a.brandImage?.endsWith(":cutout") ? ".contain" : ""}`,
           { type: "button", title: a.name || a.prompt || "", onclick: () => set(s.id, a.id === selected && !s.required ? undefined : a.id) },
@@ -669,8 +674,18 @@ export function mountFlow(root, taskId) {
     if (run?.done && !done.length && failed.length) children.push(failedView(failed[0]))
     if (result) children.push(h("div.stage-tag", {}, result.demo ? h("span.pill.small.mono", {}, "Demo result") : null, appById(result.appId) ? h("span.pill.small.mono", {}, appById(result.appId).label) : null))
     replace(stage, ...children)
+    announce(result ? `Ready. Your ${task.output === "video" ? "video" : "image"} is on the stage.` : pending.length ? "Making it now." : run?.done && failed.length ? (failed[0].status === "canceled" ? "Canceled." : friendlyError(failed[0].error).title) : "")
     renderBelow(result, done, pending)
     renderQuote()
+  }
+
+  const live = h("p.sr-only", { role: "status", "aria-live": "polite" })
+  root.append(live)
+  let said = ""
+  function announce(text) {
+    if (text === said) return
+    said = text
+    live.textContent = text
   }
 
   function previewView() {
@@ -731,12 +746,14 @@ export function mountFlow(root, taskId) {
   }
 
   function failedView(job) {
+    const why = job.status === "canceled" ? { title: "Canceled", advice: "Nothing was made. Change anything you like and make it again." } : friendlyError(job.error)
     return h(
       "div.stage-progress",
       {},
-      h("p.big", {}, job.status === "canceled" ? "Canceled" : "That didn't work"),
-      job.error ? h("p.small.muted", { style: { maxWidth: "40ch" } }, job.error) : null,
-      h("div.row", {}, h("button.btn.small", { type: "button", onclick: make }, icon("refresh"), "Try again"), h("a.btn.ghost.small", { href: "#/settings" }, "Check Settings")),
+      h("p.big", {}, why.title),
+      h("p.small.muted", { style: { maxWidth: "40ch" } }, why.advice),
+      job.error && job.status !== "canceled" ? h("details.err-details", {}, h("summary", {}, "Details"), h("p", {}, job.error)) : null,
+      h("div.row", {}, h("button.btn.small", { type: "button", onclick: make }, icon("refresh"), "Try again"), why.settings ? h("a.btn.ghost.small", { href: "#/settings" }, "Open Settings") : null),
     )
   }
 
@@ -831,17 +848,19 @@ export function mountFlow(root, taskId) {
           ),
         )
     }
-    const history = historyFor()
-    if (history.length && !result)
-      parts.push(
-        h(
-          "div.task-history",
-          {},
-          h("h3", {}, "Made earlier"),
-          h("div.recent-strip", {}, ...history.map((a) => h("button.recent-item", { type: "button", onclick: () => openLightbox(a.id, history.map((x) => x.id)) }, a.kind === "video" ? h("video", { src: a.url, muted: true, preload: "metadata" }) : h("img", { src: a.thumbUrl ?? a.url, alt: "" })))),
-        ),
-      )
     replace(below, ...parts)
+    // Earlier results sit under the whole task, so on a phone the steps come
+    // straight after the preview.
+    const history = historyFor()
+    replace(
+      historyEl,
+      ...(history.length
+        ? [
+            h("div.section-head", {}, h("h2", {}, "Made ", h("em.serif-accent", {}, "earlier")), h("a.link", { href: "#/library" }, "All files")),
+            h("div.recent-strip", {}, ...history.map((a) => h("button.recent-item", { type: "button", onclick: () => openLightbox(a.id, history.map((x) => x.id)), "aria-label": "Open an earlier result" }, a.kind === "video" ? h("video", { src: a.url, poster: a.thumbUrl ?? undefined, muted: true, preload: "metadata" }) : h("img", { src: a.thumbUrl ?? a.url, alt: "" })))),
+          ]
+        : []),
+    )
   }
 
   function nextSteps(asset) {
@@ -930,6 +949,17 @@ export function mountFlow(root, taskId) {
 // ---------------------------------------------------------------- helpers
 
 /** Title words that rise one by one; the last part is the italic accent. */
+/** What went wrong, in words a brand owner can act on. The raw message stays available under "Details". */
+export function friendlyError(message = "") {
+  const m = String(message)
+  if (/model file missing|install the custom node|not in list|missing_node_type/i.test(m)) return { title: "The GPU is missing something", advice: "The connected GPU doesn't have a model this needs yet. Settings → Save and test lists what to install.", settings: true }
+  if (/out of memory|CUDA|OOM|allocate/i.test(m)) return { title: "The GPU ran out of memory", advice: "Try a shorter length, a smaller format, or fewer variations.", settings: false }
+  if (/401|403|unauthori[sz]ed|forbidden|api key|invalid key/i.test(m)) return { title: "The GPU key was turned down", advice: "Check the key in Settings, then try again.", settings: true }
+  if (/ECONNREFUSED|ENOTFOUND|ETIMEDOUT|fetch failed|timed? ?out|502|503|504|unreachable|socket hang up/i.test(m)) return { title: "Couldn't reach the GPU", advice: "Check that your GPU server is running (Settings shows its status), then try again.", settings: true }
+  if (/ffmpeg/i.test(m)) return { title: "The video step failed", advice: "This one runs on this computer. Try again; if it repeats, try a different photo.", settings: false }
+  return { title: "That didn't work", advice: "Try again. If it keeps failing, the details below say what the engine reported.", settings: true }
+}
+
 export function wordsFor([plain, accent], { delay = 0 } = {}) {
   const words = [...plain.split(" ").map((w) => ({ w })), ...accent.split(" ").map((w) => ({ w, em: true }))]
   return h(

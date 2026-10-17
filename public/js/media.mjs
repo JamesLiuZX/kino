@@ -2,7 +2,7 @@
 // they sit in, and the lightbox. Shared by Create, Library and the Ad Studio.
 
 import { h, icon, api, toast, fail, confirmDialog, fmtSeconds, fmtBytes, timeAgo, copyText, replace } from "./ui.mjs"
-import { state, emit, appById, compose, cameraById, styleById, aspectById, audioById } from "./state.mjs"
+import { state, emit, appById, compose, cameraById, styleById, aspectById, audioById, mode } from "./state.mjs"
 
 const ROW = 6
 
@@ -48,6 +48,7 @@ function mediaEl(asset, { autoplay = false, controls = false, thumb = true } = {
 
 /** Actions available on an asset, shared by tiles and the lightbox. */
 export function actionsFor(asset) {
+  if (mode.value === "simple") return simpleActions(asset)
   const out = []
   const gen = (appId, values, label) => async () => {
     try {
@@ -71,6 +72,28 @@ export function actionsFor(asset) {
   if (asset.kind === "audio") out.push({ id: "talk", label: "Use as voice", icon: "mic", run: () => compose({ tool: "talk", appId: "talk", values: { audio: asset.id } }) })
   if (asset.appId && appById(asset.appId)) out.push({ id: "remix", label: "Remix", icon: "shuffle", run: () => compose({ tool: appById(asset.appId).tool, appId: asset.appId, values: asset.values ?? {}, focus: true }) })
   return out
+}
+
+// Simple mode names next steps as tasks and opens the guided page with the
+// file in place, so you see the choices (and the preview) before anything runs.
+function simpleActions(asset) {
+  const task = (id, values) => () => emit("open-task", { task: id, values })
+  if (asset.kind === "image")
+    return [
+      { id: "animate", label: "Bring it to life", icon: "film", run: task("animate", { image: asset.id }) },
+      { id: "photo", label: "Put it in a new scene", icon: "image", run: task("photo", { image: asset.id }) },
+      { id: "change", label: "Change something", icon: "wand", run: task("change", { image: asset.id }) },
+      { id: "cutout", label: "Remove the background", icon: "scissors", run: task("cutout", { image: asset.id }) },
+      { id: "enhance", label: "Sharpen and enlarge", icon: "maximize", run: task("enhance", { media: asset.id, action: "up2" }) },
+      { id: "talk", label: "Make it talk", icon: "mic", run: task("talk", { image: asset.id }) },
+    ]
+  if (asset.kind === "video")
+    return [
+      { id: "enhance", label: "Sharpen and enlarge", icon: "maximize", run: task("enhance", { media: asset.id, action: "up2" }) },
+      { id: "smooth", label: "Smooth the motion", icon: "zap", run: task("enhance", { media: asset.id, action: "smooth" }) },
+    ]
+  if (asset.kind === "audio") return [{ id: "talk", label: "Use it as the voice", icon: "mic", run: task("talk", { audio: asset.id }) }]
+  return []
 }
 
 async function toggleFavorite(asset) {

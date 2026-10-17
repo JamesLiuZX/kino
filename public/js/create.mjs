@@ -5,6 +5,7 @@
 import { h, icon, api, upload, toast, fail, popover, closePopover, store, aspectGlyph, fmtSeconds, replace } from "./ui.mjs"
 import { state, on, appById, appsForTool, toolById, cameraById, styleById, audioById, aspectById, isDemo, viewState } from "./state.mjs"
 import { assetCard, jobCard, masonry } from "./media.mjs"
+import { openRecorder } from "./recorder.mjs"
 import { openCameraSheet, cameraThumb, aspectPicker, stylePicker, audioPicker, durationPicker, selectPicker, STYLE_SWATCH, AUDIO_ICON } from "./pickers.mjs"
 
 const PLACEHOLDER = {
@@ -264,6 +265,7 @@ export function mountCreate(root) {
       h(
         "div.ref-menu",
         {},
+        p.type === "audio" ? h("button.btn.block.primary", { type: "button", onclick: () => (closePopover(), openRecorder({ onDone: (file) => addFile(file, p) })) }, icon("mic"), "Record with your microphone") : null,
         h("button.btn.block", { type: "button", onclick: () => (closePopover(), input.click()) }, icon("upload"), `Upload ${p.type === "audio" ? "audio" : p.type}`),
         recent.length
           ? h(

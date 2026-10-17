@@ -8,7 +8,7 @@ import { state, on, cameraById, isDemo, watched } from "./state.mjs"
 import { cameraThumb, SCENE_URL } from "./pickers.mjs"
 import { download, ring } from "./media.mjs"
 import { briefEditor, editBrandSheet, postText } from "./ads.mjs"
-import { wordsFor } from "./flow.mjs"
+import { wordsFor, friendlyError } from "./flow.mjs"
 
 const QUALITY = [
   { id: "instant", label: "Quick", sub: "Camera moves on your product photo and on generated stills. About a minute.", tag: "Free" },
@@ -358,8 +358,9 @@ export function mountAdsSimple(root) {
       h(
         "div.phone-screen",
         { style: { display: "grid", placeContent: "center", gap: "10px", padding: "24px", textAlign: "center", background: "#f6f2ec" } },
-        h("p", { style: { font: "400 24px/1.15 var(--font-display)" } }, "This one needs attention"),
-        a.error ? h("p.small.muted", {}, a.error) : null,
+        h("p", { style: { font: "400 24px/1.15 var(--font-display)" } }, friendlyError(a.error).title),
+        h("p.small.muted", {}, friendlyError(a.error).advice),
+        a.error ? h("details.err-details", {}, h("summary", {}, "Details"), h("p", {}, a.error)) : null,
         h("button.btn.small", { type: "button", onclick: () => startMaking(a).then(renderAll, fail) }, icon("refresh"), "Try again"),
       ),
     )

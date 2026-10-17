@@ -5,7 +5,7 @@
 import { h, icon, replace } from "./ui.mjs"
 import { state, on, cameraById, isDemo, setMode } from "./state.mjs"
 import { cameraThumb } from "./pickers.mjs"
-import { openLightbox } from "./media.mjs"
+import { openLightbox, actionsFor } from "./media.mjs"
 import { wordsFor } from "./flow.mjs"
 
 export function mountHome(root) {
@@ -171,14 +171,16 @@ export function mountHome(root) {
         ? h(
             "div.recent-strip",
             {},
-            ...items.map((a) =>
-              h(
-                "button.recent-item",
-                { type: "button", onclick: () => openLightbox(a.id, ids), title: a.prompt || a.name || "" },
-                a.kind === "video" ? h("video", { src: a.url, poster: a.thumbUrl ?? undefined, muted: true, loop: true, playsinline: true, preload: "metadata", onmouseenter: (e) => e.target.play().catch(() => {}), onmouseleave: (e) => e.target.pause() }) : h("img", { src: a.thumbUrl ?? a.url, alt: "", loading: "lazy" }),
+            ...items.map((a) => {
+              const video = a.kind === "video" ? h("video", { src: a.url, poster: a.thumbUrl ?? undefined, muted: true, loop: true, playsinline: true, preload: "metadata" }) : null
+              return h(
+                "div.recent-item",
+                video ? { onmouseenter: () => video.play().catch(() => {}), onmouseleave: () => video.pause() } : {},
+                h("button.ri-open", { type: "button", onclick: () => openLightbox(a.id, ids), "aria-label": `Open ${a.prompt || a.name || (a.kind === "video" ? "video" : "photo")}` }, video ?? h("img", { src: a.thumbUrl ?? a.url, alt: "", loading: "lazy" })),
                 h("span.ri-meta", {}, h("span.pill.small", {}, a.source === "ad" ? "Ad" : a.kind === "video" ? "Video" : "Photo"), a.demo ? h("span.pill.small", {}, "Demo") : null),
-              ),
-            ),
+                h("span.ri-actions", {}, ...actionsFor(a).slice(0, 2).map((x) => h("button.ri-act", { type: "button", onclick: x.run }, icon(x.icon), x.label))),
+              )
+            }),
           )
         : h("p.empty-note", {}, "Things you make appear here, ready to download, animate or turn into an ad."),
       h("p.advanced-hint", {}, icon("sliders"), "Want every model and setting? ", h("button.link", { type: "button", onclick: () => (setMode("advanced"), (location.hash = "#/studio")) }, "Switch to Advanced")),
