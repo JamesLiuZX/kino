@@ -1,0 +1,6 @@
+node_modules
+data
+test
+*.log
+.DS_Store
+runpod

@@ -85,6 +85,39 @@ Optional: `npm install` adds the Claude SDK; with an API key in Settings,
 Claude improves prompts and writes ad scripts (`claude-opus-5-5` by default,
 with server-side refusal fallbacks enabled).
 
+## Run it on a server
+
+To reach the studio from your phone or share it with a teammate, run it on any
+small server (a VPS, Fly.io, Railway or a RunPod CPU pod). It needs no GPU of
+its own; that's what the ComfyUI or RunPod connection is for.
+
+```bash
+cd kino
+docker build -t kino .
+docker run -d --restart unless-stopped -p 7860:7860 \
+  -e KINO_TOKEN=<pick an access code> \
+  -v kino-data:/data kino
+```
+
+- **`KINO_TOKEN` is required** once the studio is reachable from the internet:
+  anyone who can open it can spend your GPU time and API credit. The studio asks
+  for the code once per browser.
+- Put HTTPS in front of it (Caddy, or the platform's own TLS) so the code
+  isn't sent in the clear.
+- Everything lives in the `/data` volume: your files, the library and the
+  settings you save in the studio (GPU connection, Claude key). Back it up
+  like any other data.
+- Settings can also come from the environment instead of the Settings page,
+  e.g. `KINO_PROVIDER`, `KINO_CAPTION_FONT`, `KINO_CLAUDE_MODEL` (see
+  `src/settings.mjs`).
+
+The image has ffmpeg and a Chinese caption font, so instant camera moves and ad
+renders work out of the box.
+
+HerbalBath's Autopilot also runs Kino without the UI: its media job checks out
+this folder in GitHub Actions and renders queued briefs (see
+`scripts/ops/render-media.mjs` in herbalbath-myrrh).
+
 ## How it works
 
 ```
@@ -116,6 +149,7 @@ browser: vanilla JS, no build step ──REST + server-sent events── server.
   `/cancel` with runpod/worker-comfyui's input and output format.
 
 ```
+Dockerfile   the studio as a container, for running it on a server
 apps/        app catalogue and template sources
 brands/      brand profiles and product photos for the Ad Studio
 comfy/       ComfyUI 0.41 node registry
