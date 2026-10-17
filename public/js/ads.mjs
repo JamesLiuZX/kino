@@ -133,72 +133,7 @@ export function mountAds(root) {
     )
   }
 
-  function editBrand(b) {
-    const two = (label, obj = {}, help) => {
-      const zh = h("input.input", { value: obj.zh ?? "", placeholder: "中文" })
-      const en = h("input.input", { value: obj.en ?? "", placeholder: "English" })
-      return { el: h("div.field", {}, h("span", {}, label), zh, en, help ? h("small.muted", {}, help) : null), get: () => ({ ...obj, zh: zh.value.trim(), en: en.value.trim() }) }
-    }
-    const lines = (label, list = [], help) => {
-      const ta = h("textarea.input", { rows: 4 })
-      ta.value = list.join("\n")
-      return { el: h("label.field", {}, h("span", {}, label), ta, help ? h("small.muted", {}, help) : null), get: () => ta.value.split("\n").map((s) => s.trim()).filter(Boolean) }
-    }
-    const price = h("input.input", { value: b.offer?.price ?? "" })
-    const original = h("input.input", { value: b.offer?.originalPrice ?? "" })
-    const bundle = two("Offer", b.offer?.bundle)
-    const guarantee = two("Guarantee", b.offer?.guarantee)
-    const cta = two("Call to action (end card)", b.cta, "e.g. WhatsApp 8xxx xxxx 订购. Saved on this machine only.")
-    const claimsZh = lines("Approved claims, 中文 (one per line)", b.claims?.approved?.zh)
-    const claimsEn = lines("Approved claims, English (one per line)", b.claims?.approved?.en, "Ads may use these word for word. Anything else that sounds like an effect gets flagged.")
-    const banned = lines("Banned words (one per line, any language)", [...(b.banned?.zh ?? []), ...(b.banned?.en ?? [])])
-    const s = sheet(
-      `Edit ${b.name}`,
-      h(
-        "div.brand-edit",
-        {},
-        h("div.row", {}, h("label.field.grow", {}, h("span", {}, "Price"), price), h("label.field.grow", {}, h("span", {}, "Was"), original)),
-        bundle.el,
-        guarantee.el,
-        cta.el,
-        claimsZh.el,
-        claimsEn.el,
-        banned.el,
-        h(
-          "div.row.end",
-          {},
-          h("button.btn.ghost", { type: "button", onclick: () => s.close() }, "Cancel"),
-          h(
-            "button.btn.primary",
-            {
-              type: "button",
-              onclick: async () => {
-                const words = banned.get()
-                try {
-                  const saved = await api(`/api/brands/${b.id}`, {
-                    method: "PUT",
-                    body: {
-                      offer: { ...b.offer, price: price.value.trim(), originalPrice: original.value.trim(), bundle: bundle.get(), guarantee: guarantee.get() },
-                      cta: cta.get(),
-                      claims: { ...b.claims, approved: { zh: claimsZh.get(), en: claimsEn.get() } },
-                      banned: { zh: words.filter((w) => /[㐀-鿿]/.test(w)), en: words.filter((w) => !/[㐀-鿿]/.test(w)) },
-                    },
-                  })
-                  cfg.brands = cfg.brands.map((x) => (x.id === saved.id ? saved : x))
-                  s.close()
-                  renderForm()
-                  toast("Brand saved. New scripts will use it.", { kind: "ok" })
-                } catch (e) {
-                  fail(e)
-                }
-              },
-            },
-            "Save",
-          ),
-        ),
-      ),
-    )
-  }
+  const editBrand = (b) => editBrandSheet(b, { onSaved: () => renderForm() })
 
   async function write() {
     writing = true
@@ -438,10 +373,79 @@ export function mountAds(root) {
   return () => offs.forEach((off) => off())
 }
 
-const postText = (brief) => [brief.postCopy.primaryText, brief.postCopy.hashtags?.join(" ")].filter(Boolean).join("\n\n")
+export function editBrandSheet(b, { onSaved } = {}) {
+const cfg = state.boot.ads
+  const two = (label, obj = {}, help) => {
+    const zh = h("input.input", { value: obj.zh ?? "", placeholder: "中文" })
+    const en = h("input.input", { value: obj.en ?? "", placeholder: "English" })
+    return { el: h("div.field", {}, h("span", {}, label), zh, en, help ? h("small.muted", {}, help) : null), get: () => ({ ...obj, zh: zh.value.trim(), en: en.value.trim() }) }
+  }
+  const lines = (label, list = [], help) => {
+    const ta = h("textarea.input", { rows: 4 })
+    ta.value = list.join("\n")
+    return { el: h("label.field", {}, h("span", {}, label), ta, help ? h("small.muted", {}, help) : null), get: () => ta.value.split("\n").map((s) => s.trim()).filter(Boolean) }
+  }
+  const price = h("input.input", { value: b.offer?.price ?? "" })
+  const original = h("input.input", { value: b.offer?.originalPrice ?? "" })
+  const bundle = two("Offer", b.offer?.bundle)
+  const guarantee = two("Guarantee", b.offer?.guarantee)
+  const cta = two("Call to action (end card)", b.cta, "e.g. WhatsApp 8xxx xxxx 订购. Saved on this machine only.")
+  const claimsZh = lines("Approved claims, 中文 (one per line)", b.claims?.approved?.zh)
+  const claimsEn = lines("Approved claims, English (one per line)", b.claims?.approved?.en, "Ads may use these word for word. Anything else that sounds like an effect gets flagged.")
+  const banned = lines("Banned words (one per line, any language)", [...(b.banned?.zh ?? []), ...(b.banned?.en ?? [])])
+  const s = sheet(
+    `Edit ${b.name}`,
+    h(
+      "div.brand-edit",
+      {},
+      h("div.row", {}, h("label.field.grow", {}, h("span", {}, "Price"), price), h("label.field.grow", {}, h("span", {}, "Was"), original)),
+      bundle.el,
+      guarantee.el,
+      cta.el,
+      claimsZh.el,
+      claimsEn.el,
+      banned.el,
+      h(
+        "div.row.end",
+        {},
+        h("button.btn.ghost", { type: "button", onclick: () => s.close() }, "Cancel"),
+        h(
+          "button.btn.primary",
+          {
+            type: "button",
+            onclick: async () => {
+              const words = banned.get()
+              try {
+                const saved = await api(`/api/brands/${b.id}`, {
+                  method: "PUT",
+                  body: {
+                    offer: { ...b.offer, price: price.value.trim(), originalPrice: original.value.trim(), bundle: bundle.get(), guarantee: guarantee.get() },
+                    cta: cta.get(),
+                    claims: { ...b.claims, approved: { zh: claimsZh.get(), en: claimsEn.get() } },
+                    banned: { zh: words.filter((w) => /[㐀-鿿]/.test(w)), en: words.filter((w) => !/[㐀-鿿]/.test(w)) },
+                  },
+                })
+                cfg.brands = cfg.brands.map((x) => (x.id === saved.id ? saved : x))
+                s.close()
+                onSaved?.(saved)
+                toast("Brand saved. New scripts will use it.", { kind: "ok" })
+              } catch (e) {
+                fail(e)
+              }
+            },
+          },
+          "Save",
+        ),
+      ),
+    ),
+  )
+}
+
+
+export const postText = (brief) => [brief.postCopy.primaryText, brief.postCopy.hashtags?.join(" ")].filter(Boolean).join("\n\n")
 
 /** Edits a brief in place: hook, shots, end card and post copy. */
-function briefEditor(brief, { engine, productUrl, issues = brief.issues ?? [] }) {
+export function briefEditor(brief, { engine, productUrl, issues = brief.issues ?? [] }) {
   const el = h("div.brief")
   const issueFor = (field) => issues.filter((i) => i.field === field || i.field.startsWith(`${field}.`))
   const flag = (field) => {

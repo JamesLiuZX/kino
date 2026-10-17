@@ -1,31 +1,53 @@
-// Boot, navigation and the live event stream.
+// Boot, the top bar (navigation, Simple/Advanced, activity, status), routing
+// and the live event stream.
 
 import { h, icon, api, toast, replace } from "./ui.mjs"
-import { state, on, emit } from "./state.mjs"
+import { state, on, emit, mode, setMode, viewState } from "./state.mjs"
 import { mountCreate } from "./create.mjs"
 import { mountLibrary } from "./library.mjs"
 import { mountAds } from "./ads.mjs"
+import { mountAdsSimple } from "./ads-simple.mjs"
 import { mountApps } from "./apps.mjs"
 import { mountSettings } from "./settings.mjs"
+import { mountHome } from "./home.mjs"
+import { mountFlow, taskForCompose, openTask } from "./flow.mjs"
+import { activityButton, watchCompletions } from "./activity.mjs"
 
-const VIEWS = {
-  create: { label: "Create", icon: "sparkles", mount: mountCreate },
-  library: { label: "Library", icon: "grid", mount: mountLibrary },
-  ads: { label: "Ad Studio", icon: "megaphone", mount: mountAds },
-  apps: { label: "Apps", icon: "puzzle", mount: mountApps },
-  settings: { label: "Settings", icon: "settings", mount: mountSettings },
+const ROUTES = {
+  home: { title: "Make", mount: (el) => mountHome(el) },
+  make: { title: "Make", mount: (el, arg) => mountFlow(el, arg) },
+  studio: { title: "Studio", mount: (el) => mountCreate(el) },
+  ads: { title: "Ads", mount: (el) => (mode.value === "advanced" ? mountAds(el) : mountAdsSimple(el)) },
+  library: { title: "Library", mount: (el) => mountLibrary(el) },
+  apps: { title: "Apps", mount: (el) => mountApps(el) },
+  settings: { title: "Settings", mount: (el) => mountSettings(el) },
+}
+
+const NAV = {
+  simple: [
+    { id: "home", label: "Make", icon: "sparkles", match: ["home", "make"] },
+    { id: "ads", label: "Ads", icon: "megaphone" },
+    { id: "library", label: "Library", icon: "grid" },
+  ],
+  advanced: [
+    { id: "studio", label: "Studio", icon: "sliders" },
+    { id: "ads", label: "Ads", icon: "megaphone" },
+    { id: "library", label: "Library", icon: "grid" },
+    { id: "apps", label: "Apps", icon: "puzzle" },
+  ],
 }
 
 const app = document.getElementById("app")
 let unmount = null
 let current = null
+let navEl, bottomEl, toggleEl, statusEl
 
 async function boot() {
   try {
     state.boot = await api("/api/bootstrap")
   } catch (e) {
     if (e.status === 401) return login()
-    replace(app, h("div.fatal", {}, h("h1", {}, "Kino can't start"), h("p", {}, e.message)))
+    replace(app, h("div.fatal", {}, h("span.brand-mark.big", {}, "K"), h("h1", {}, "Kino can't start"), h("p.muted", {}, e.message)))
     return
   }
   const [assets, jobs, ads] = await Promise.all([api("/api/assets?limit=500"), api("/api/jobs"), api("/api/ads")])
@@ -36,85 +58,156 @@ async function boot() {
   for (const a of ads) state.ads.set(a.id, a)
   shell()
   connect()
-  addEventListener("hashchange", route)
+  watchCompletions()
+  addEventListener("hashchange", () => route())
   route()
 }
 
+// ---------------------------------------------------------------- shell
+
 function shell() {
-  const nav = h(
-    "nav.rail",
-    { "aria-label": "Main" },
-    h("a.brand", { href: "#/create", "aria-label": "Kino" }, h("span.brand-mark", {}, "K"), h("span.brand-name", {}, "Kino")),
-    h("div.rail-links", {}, ...Object.entries(VIEWS).map(([id, v]) => h("a.rail-link", { href: `#/${id}`, dataset: { view: id } }, icon(v.icon), h("span", {}, v.label)))),
-    h("a.rail-status", { href: "#/settings", title: "Where models run" }, h("span.dot"), h("span.rail-status-label")),
+  navEl = h("nav.nav", { "aria-label": "Main" })
+  bottomEl = h("nav.bottom-nav", { "aria-label": "Main" })
+  toggleEl = h("div.mode-toggle", { role: "group", "aria-label": "Mode" })
+  statusEl = h("a.status-pill", { href: "#/settings", title: "Where models run" })
+  const top = h(
+    "header.topbar",
+    {},
+    h("div.top-left", {}, h("a.brand", { href: "#/", "aria-label": "Kino home" }, h("span.brand-mark", {}, "K"), h("span.brand-word", {}, "Kino", h("small", {}, "Studio")))),
+    navEl,
+    h("div.top-right", {}, activityButton(), toggleEl, statusEl, h("a.icon-btn.ghost", { href: "#/settings", "aria-label": "Settings", title: "Settings" }, icon("settings"))),
   )
-  replace(app, nav, h("main.view", { id: "view" }))
+  replace(app, top, h("main.view", { id: "view" }), bottomEl)
+  renderChrome()
+  addEventListener("scroll", () => top.classList.toggle("scrolled", scrollY > 4), { passive: true })
+}
+
+function renderChrome() {
+  const items = NAV[mode.value]
+  const active = (item) => (item.match ?? [item.id]).includes(current)
+  replace(navEl, ...items.map((it) => h(`a.nav-link${active(it) ? ".active" : ""}`, { href: `#/${it.id}` }, it.label)))
+  replace(
+    bottomEl,
+    ...items.map((it) => h(`a${active(it) ? ".active" : ""}`, { href: `#/${it.id}` }, icon(it.icon), h("span", {}, it.label))),
+    h(`a${current === "settings" ? ".active" : ""}`, { href: "#/settings" }, icon("settings"), h("span", {}, "Settings")),
+  )
+  toggleEl.className = `mode-toggle is-${mode.value}`
+  replace(
+    toggleEl,
+    h("span.thumb"),
+    h(`button${mode.value === "simple" ? ".on" : ""}`, { type: "button", "aria-pressed": mode.value === "simple" ? "true" : "false", title: "Guided tasks with smart defaults", onclick: () => switchMode("simple") }, "Simple"),
+    h(`button${mode.value === "advanced" ? ".on" : ""}`, { type: "button", "aria-pressed": mode.value === "advanced" ? "true" : "false", title: "Every model and every setting", onclick: () => switchMode("advanced") }, "Advanced"),
+  )
   renderStatus()
 }
 
 function renderStatus() {
+  if (!statusEl) return
   const p = state.boot.provider
-  const dot = app.querySelector(".rail-status .dot")
-  const label = app.querySelector(".rail-status-label")
-  if (!dot) return
-  dot.className = `dot ${p.error ? "bad" : p.id === "mock" ? "warn" : "ok"}`
-  label.textContent = p.id === "mock" ? "Demo mode" : p.id === "runpod" ? "RunPod" : "ComfyUI"
-  app.querySelector(".rail-status").title = p.label
+  const kind = p.error ? "bad" : p.id === "mock" ? "warn" : "ok"
+  const text = p.id === "mock" ? "Demo mode" : p.id === "runpod" ? "RunPod" : "ComfyUI"
+  replace(statusEl, h(`span.dot.${kind}${kind === "ok" ? ".live" : ""}`), h("span.status-text", {}, text))
+  statusEl.title = p.id === "mock" ? "Demo mode: placeholder results made on this computer. Connect a GPU in Settings." : p.label
 }
 
-function route() {
-  const id = (location.hash.replace(/^#\/?/, "").split("/")[0] || "create").toLowerCase()
-  const view = VIEWS[id] ? id : "create"
-  if (view === current && unmount) return
-  unmount?.()
-  current = view
-  const container = document.getElementById("view")
-  container.replaceChildren()
-  container.dataset.view = view
-  unmount = VIEWS[view].mount(container) ?? null
-  for (const a of app.querySelectorAll(".rail-link")) a.classList.toggle("active", a.dataset.view === view)
-  document.title = `${VIEWS[view].label} · Kino`
+/** Switch mode and carry what you were doing across. */
+function switchMode(next) {
+  if (next === mode.value) return
+  const carry = viewState.get?.()
+  setMode(next)
+  if (next === "advanced") {
+    if (current === "home" || current === "make") {
+      if (carry?.appId) window.__kinoCompose = carry
+      return go("#/studio")
+    }
+  } else {
+    if (current === "studio") {
+      const target = carry && taskForCompose(carry)
+      return target ? openTask(target.task, target.values) : go("#/home")
+    }
+    if (current === "apps") return go("#/home")
+  }
+  // Same route, different depth (Ads switches between the wizard and the full studio).
+  route({ force: true })
 }
 
-// Remix / Animate / Edit from anywhere lands in Create with the values loaded.
+function go(hash) {
+  if (location.hash === hash) route({ force: true })
+  else location.hash = hash
+}
+
+// ---------------------------------------------------------------- routing
+
+function parse() {
+  const [id = "", arg] = location.hash.replace(/^#\/?/, "").split("/")
+  const key = id.toLowerCase()
+  if (key === "create") return { view: "studio" } // old links
+  if (ROUTES[key]) return { view: key, arg }
+  return { view: mode.value === "advanced" ? "studio" : "home" }
+}
+
+function route({ force = false } = {}) {
+  const { view, arg } = parse()
+  const key = `${view}/${arg ?? ""}`
+  if (!force && key === current + "/" + (state.routeArg ?? "") && unmount) return
+  // The address decides the depth: the Studio and Apps are Advanced, the
+  // guided tasks are Simple.
+  const implied = { studio: "advanced", apps: "advanced", home: "simple", make: "simple" }[view]
+  if (implied && implied !== mode.value) setMode(implied)
+  const swap = () => {
+    unmount?.()
+    viewState.get = null
+    current = view
+    state.view = view
+    state.routeArg = arg
+    const container = document.getElementById("view")
+    container.replaceChildren()
+    container.dataset.view = view
+    unmount = ROUTES[view].mount(container, arg) ?? null
+    renderChrome()
+    document.title = `${view === "make" ? "Make" : ROUTES[view].title} · Kino`
+    scrollTo({ top: 0 })
+  }
+  if (document.startViewTransition && !matchMedia("(prefers-reduced-motion: reduce)").matches && current) document.startViewTransition(swap)
+  else swap()
+}
+
+// Remix / Animate / Edit from anywhere: Advanced loads it in the Studio, Simple
+// opens the matching guided task with the photo already in place.
 on("compose", (req) => {
-  if (current === "create") return
-  window.__kinoCompose = req
-  location.hash = "#/create"
+  if (mode.value === "advanced") {
+    if (current === "studio") return
+    window.__kinoCompose = req
+    location.hash = "#/studio"
+    return
+  }
+  const target = taskForCompose(req)
+  if (target) openTask(target.task, target.values)
+  else {
+    setMode("advanced")
+    window.__kinoCompose = req
+    go("#/studio")
+  }
 })
+
+on("mode", () => renderChrome())
+
+// ---------------------------------------------------------------- live updates
 
 function connect() {
   const es = new EventSource("/api/events")
-  es.addEventListener("job", (e) => {
-    const j = JSON.parse(e.data)
-    state.jobs.set(j.id, j)
-    emit("job", j)
-  })
-  es.addEventListener("job-removed", (e) => {
-    const { id } = JSON.parse(e.data)
-    state.jobs.delete(id)
-    emit("job-removed", { id })
-  })
-  es.addEventListener("asset", (e) => {
-    const a = JSON.parse(e.data)
-    state.assets.set(a.id, a)
-    emit("asset", a)
-  })
-  es.addEventListener("asset-removed", (e) => {
-    const { id } = JSON.parse(e.data)
-    state.assets.delete(id)
-    emit("asset-removed", { id })
-  })
-  es.addEventListener("ad", (e) => {
-    const a = JSON.parse(e.data)
-    state.ads.set(a.id, a)
-    emit("ad", a)
-  })
-  es.addEventListener("ad-removed", (e) => {
-    const { id } = JSON.parse(e.data)
-    state.ads.delete(id)
-    emit("ad-removed", { id })
-  })
+  const relay = (type, apply) =>
+    es.addEventListener(type, (e) => {
+      const data = JSON.parse(e.data)
+      apply(data)
+      emit(type, data)
+    })
+  relay("job", (j) => state.jobs.set(j.id, j))
+  relay("job-removed", ({ id }) => state.jobs.delete(id))
+  relay("asset", (a) => state.assets.set(a.id, a))
+  relay("asset-removed", ({ id }) => state.assets.delete(id))
+  relay("ad", (a) => state.ads.set(a.id, a))
+  relay("ad-removed", ({ id }) => state.ads.delete(id))
   es.addEventListener("apps", async () => {
     state.boot = await api("/api/bootstrap")
     emit("boot", state.boot)
@@ -148,7 +241,19 @@ function login() {
       error.textContent = err.message
     }
   }
-  replace(app, h("form.login", { onsubmit: submit }, h("span.brand-mark.big", {}, "K"), h("h1", {}, "Kino"), h("p.muted", {}, "This studio is protected. Enter its access code."), input, h("button.btn.primary.block", { type: "submit" }, "Enter"), error))
+  replace(
+    app,
+    h(
+      "form.login.rise",
+      { onsubmit: submit },
+      h("span.brand-mark.big", {}, "K"),
+      h("h1", {}, "Kino ", h("em", {}, "studio")),
+      h("p.muted", {}, "This studio is private. Enter its access code."),
+      input,
+      h("button.btn.primary.block", { type: "submit" }, "Enter"),
+      error,
+    ),
+  )
   input.focus()
 }
 

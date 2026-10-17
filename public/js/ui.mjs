@@ -12,7 +12,11 @@ export function h(tag, props = {}, ...children) {
     else if (k === "dataset") Object.assign(el.dataset, v)
     else if (k.startsWith("on") && typeof v === "function") el.addEventListener(k.slice(2).toLowerCase(), v)
     else if (k === "html") el.innerHTML = v
-    else if (v === true) el.setAttribute(k, "")
+    else if (v === true) {
+      el.setAttribute(k, "")
+      // The attribute alone doesn't mute a script-made video, and unmuted videos can't autoplay.
+      if (k === "muted") el.muted = true
+    }
     else el.setAttribute(k, v)
   }
   append(el, children)

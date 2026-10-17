@@ -3,7 +3,7 @@
 // everything else out of the way. Results stream into the feed above it.
 
 import { h, icon, api, upload, toast, fail, popover, closePopover, store, aspectGlyph, fmtSeconds, replace } from "./ui.mjs"
-import { state, on, appById, appsForTool, toolById, cameraById, styleById, audioById, aspectById, isDemo } from "./state.mjs"
+import { state, on, appById, appsForTool, toolById, cameraById, styleById, audioById, aspectById, isDemo, viewState } from "./state.mjs"
 import { assetCard, jobCard, masonry } from "./media.mjs"
 import { openCameraSheet, cameraThumb, aspectPicker, stylePicker, audioPicker, durationPicker, selectPicker, STYLE_SWATCH, AUDIO_ICON } from "./pickers.mjs"
 
@@ -578,6 +578,8 @@ export function mountCreate(root) {
   ]
 
   pickTool(tool)
+  // Switching to Simple carries what's on the composer into the matching task.
+  viewState.get = () => (app ? { tool, appId: app.id, values } : null)
   const pendingCompose = window.__kinoCompose
   if (pendingCompose) {
     window.__kinoCompose = null

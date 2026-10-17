@@ -18,6 +18,22 @@ whole studio before connecting a GPU. Connect one in **Settings**.
 
 ## What's inside
 
+Two depths over the same engine, switched from the top bar (Kino remembers
+your choice and carries what you were doing across):
+
+- **Simple** starts from the task, not the tool: *a video ad*, *product photo
+  in a new scene*, *bring it to life*, *change a photo*, *remove the
+  background*, *image from words*, *make it talk*, *sharpen and enlarge*. One
+  page per task, one decision per step, a live preview of the result before
+  anything is made, and "keep going" next steps after it. The ad maker
+  previews the script as a storyboard on a phone, explains compliance in plain
+  words, and lets you edit any line before making.
+- **Advanced** is the full studio: every model, every setting, your own
+  ComfyUI workflows, and the multi-angle ad studio.
+
+The user stories and flows behind both are in
+[docs/user-flows.md](docs/user-flows.md).
+
 | Tool | Apps | Models (official ComfyUI templates) |
 |---|---|---|
 | Image | Fast · Pro (text and posters) | Z-Image-Turbo · Qwen Image 2.1 Turbo |

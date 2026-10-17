@@ -41,3 +41,33 @@ export const isDemo = () => state.boot?.provider.id === "mock"
 export function compose(request) {
   emit("compose", request)
 }
+
+// ---------------------------------------------------------------- mode
+
+// Simple (task-first, guided) or Advanced (every model and knob). Remembered
+// on this machine; new visitors start in Simple.
+let savedMode = "simple"
+try {
+  savedMode = JSON.parse(localStorage.getItem("kino:mode") ?? '"simple"') === "advanced" ? "advanced" : "simple"
+} catch {}
+
+export const mode = { value: savedMode }
+export const isAdvanced = () => mode.value === "advanced"
+
+export function setMode(next) {
+  if (next === mode.value) return
+  mode.value = next
+  try {
+    localStorage.setItem("kino:mode", JSON.stringify(next))
+  } catch {}
+  emit("mode", next)
+}
+
+/**
+ * What the visible view is working on ({ tool, appId, values }), so switching
+ * mode can carry it across. Views set `get` when they mount.
+ */
+export const viewState = { get: null }
+
+/** Jobs and ads a view is already showing; the activity tray won't toast them. */
+export const watched = new Set()

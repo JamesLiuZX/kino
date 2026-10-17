@@ -72,7 +72,7 @@ export function mountApps(root) {
               h(
                 "div.row.wrap",
                 {},
-                h("a.btn.small", { href: "#/create", onclick: () => (window.__kinoCompose = { tool: a.tool, appId: a.id, values: {} }) }, "Open"),
+                h("a.btn.small", { href: "#/studio", onclick: () => (window.__kinoCompose = { tool: a.tool, appId: a.id, values: {} }) }, "Open"),
                 !a.local ? h("a.btn.small.ghost", { href: `/api/apps/${a.id}/workflow`, download: `${a.id}-api.json` }, icon("download"), "Workflow") : null,
                 a.custom ? h("button.icon-btn.danger.small", { type: "button", "aria-label": "Remove app", onclick: () => removeApp(a) }, icon("trash")) : null,
               ),
@@ -115,7 +115,7 @@ export function mountApps(root) {
             {},
             h("p", {}, icon("check"), h("strong", {}, `“${res.app.label}” is ready`), ` · ${res.app.output} · knobs: ${res.app.params.map((p) => p.label ?? p.id).join(", ") || "none"}`),
             ...res.warnings.map((w) => h("p.warn.small", {}, icon("alert"), w)),
-            h("a.btn.small.primary", { href: "#/create", onclick: () => (window.__kinoCompose = { tool: res.app.tool, appId: res.app.id, values: {} }) }, "Try it"),
+            h("a.btn.small.primary", { href: "#/studio", onclick: () => (window.__kinoCompose = { tool: res.app.tool, appId: res.app.id, values: {} }) }, "Try it"),
           ),
         )
       } catch (e) {

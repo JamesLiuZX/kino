@@ -184,7 +184,7 @@ export function jobCard(job, { onRemove } = {}) {
   return card
 }
 
-function ring(p, indeterminate) {
+export function ring(p, indeterminate) {
   const r = 18
   const c = 2 * Math.PI * r
   const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg")
