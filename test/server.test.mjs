@@ -73,7 +73,7 @@ test("upload, generate variations, stream events, serve files with ranges", asyn
 
     const up = await s.call("/api/assets", { method: "POST", raw: photo, headers: { "Content-Type": "image/jpeg", "X-Filename": "bottle.jpg" } })
     assert.equal(up.status, 200)
-    assert.deepEqual([up.data.width, up.data.height], [2890, 3853])
+    assert.deepEqual([up.data.width, up.data.height], [1200, 1200])
     assert.ok(up.data.thumbUrl.startsWith("/thumbs/") || !ffmpeg)
 
     const gen = await s.call("/api/generate", { method: "POST", body: { app: "image-fast", values: { prompt: "a teapot", aspect: "1:1" }, count: 2 } })

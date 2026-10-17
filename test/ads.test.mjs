@@ -45,8 +45,8 @@ test("compliance flags medical words, personal attributes and before/after, but 
   assert.ok(rules(edit((b) => ((b.shots[1].source = "generate"), (b.shots[1].visual = "a hand holding the spray bottle")))).includes("warn:invented-product"))
   assert.ok(rules(edit((b) => (b.shots[3].caption = "Loved by 15,000+ Singaporeans"))).includes("warn:confirm-claim"))
   // The product's own name and the approved claims pass.
-  assert.deepEqual(edit((b) => (b.shots[3].caption = "HerbalBath Myrrh Soreness Relief Spray: Warmth in 10 seconds")), [])
-  assert.deepEqual(edit((b) => (b.shots[3].caption = "没药舒缓喷雾 · 10秒感受温热")), [])
+  assert.deepEqual(edit((b) => (b.shots[3].caption = "HerbalBath Myrrh Herbal Energy Oil: Warmth in 10 seconds")), [])
+  assert.deepEqual(edit((b) => (b.shots[3].caption = "没药草本能量油 · 10秒感受温热")), [])
 })
 
 test("normalizeBrief repairs sloppy input instead of failing", () => {

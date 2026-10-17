@@ -11,7 +11,7 @@ export const ANGLES = {
   ritual: { label: "Daily ritual", hint: "the warm moment at the end of a long day" },
   gift: { label: "Gift for parents", hint: "grown-up children buying for Mum and Dad" },
   tradition: { label: "Ancient tradition", hint: "myrrh and frankincense, two thousand years of use" },
-  howto: { label: "How to use", hint: "spray, wait ten seconds, press with your palm" },
+  howto: { label: "How to use", hint: "apply it, press with your palm, feel the warmth in about ten seconds" },
   offer: { label: "The offer", hint: "price, bundle, delivery, guarantee" },
   community: { label: "Singapore homes", hint: "everyday people and places, no invented testimonials" },
 }
