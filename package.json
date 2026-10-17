@@ -1,0 +1,20 @@
+{
+  "name": "kino",
+  "version": "0.1.0",
+  "private": true,
+  "description": "A one-box AI image and video studio on ComfyUI and RunPod, with an Ad Studio for TikTok and Meta.",
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "start": "node server.mjs",
+    "dev": "node --watch server.mjs",
+    "test": "node --test --test-timeout=180000 test/*.test.mjs",
+    "build:workflows": "node scripts/build-workflows.mjs",
+    "build:nodes": "python3 scripts/core-nodes.py"
+  },
+  "optionalDependencies": {
+    "@anthropic-ai/sdk": "0.131.0"
+  }
+}

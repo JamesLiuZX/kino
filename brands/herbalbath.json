@@ -1,0 +1,78 @@
+{
+  "id": "herbalbath",
+  "name": "HerbalBath",
+  "product": {
+    "name": { "zh": "HerbalBath 没药舒缓喷雾", "en": "HerbalBath Myrrh Soreness Relief Spray" },
+    "short": { "zh": "没药喷雾", "en": "Myrrh Spray" },
+    "size": "60ml",
+    "what": {
+      "zh": "外用草本喷雾，主要成分是没药和乳香。喷在身上约10秒感受温热。",
+      "en": "A topical herbal spray made with myrrh and frankincense. Spray on and feel warmth in about 10 seconds."
+    },
+    "usage": {
+      "zh": ["距离5-10cm喷雾", "10秒内感受热感", "喷后用手掌按压10秒", "每日2次"],
+      "en": ["Spray from 5-10cm away", "Feel the warmth within 10 seconds", "Press with your palm for 10 seconds", "Twice a day"]
+    },
+    "images": { "photo": "herbalbath/product.jpg", "cutout": "herbalbath/product-cutout.webp" },
+    "look": "a 60ml amber glass spray bottle with a clear cap and a maroon and cream label, next to its box"
+  },
+  "audience": {
+    "zh": "新加坡家庭：喜欢天然、传统产品的55岁以上讲华语的长辈，以及替父母买东西的成年子女。",
+    "en": "Singapore families: Mandarin-speaking adults 55+ who like natural, traditional products, and their grown-up children who shop for them."
+  },
+  "voice": {
+    "zh": "温暖、朴实、尊重长辈。句子要短，字要大。不夸张，不说医疗功效，不制造焦虑。",
+    "en": "Warm, plain-spoken, respectful of elders. Short sentences, big type. Never pushy, never medical, never fear-based."
+  },
+  "colors": { "primary": "#7F351E", "accent": "#B8743B", "teal": "#2F6F6A", "background": "#FBF4E8", "text": "#2B1A12" },
+  "offer": {
+    "price": "S$39",
+    "originalPrice": "S$49",
+    "bundle": { "zh": "买3送1 + 免费送货", "en": "Buy 3 Get 1 Free + Free Delivery" },
+    "guarantee": { "zh": "30天不满意，全额退款", "en": "30-Day Money-Back Guarantee" }
+  },
+  "cta": {
+    "zh": "立即订购 herbalbathsg.com",
+    "en": "Order at herbalbathsg.com",
+    "url": "herbalbathsg.com/pay"
+  },
+  "claims": {
+    "approved": {
+      "zh": ["10秒感受温热", "一瓶可用3-4个月", "100%天然成分", "买3送1优惠", "30天不满意，全额退款"],
+      "en": ["Warmth in 10 seconds", "One bottle lasts 3-4 months", "100% natural ingredients", "Buy 3 Get 1 Free deal", "30-Day Money-Back Guarantee"]
+    },
+    "confirm": [
+      {
+        "zh": "15,000+新加坡用户",
+        "en": "15,000+ Singaporeans",
+        "note": "Confirm the customer count before an ad uses it."
+      }
+    ]
+  },
+  "story": {
+    "zh": "没药与乳香是两千年来流传的传统外用香料，HerbalBath 把它们做成了方便每天使用的喷雾。",
+    "en": "Myrrh and frankincense have been treasured as traditional topical ingredients for two thousand years. HerbalBath made them easy to use every day, in a spray."
+  },
+  "moments": {
+    "zh": ["晨练之后", "做完家务", "长时间看孙子之后", "一天工作结束", "下雨天", "睡前放松"],
+    "en": ["after morning tai chi", "after the housework", "after a long day minding the grandchildren", "at the end of a work day", "on rainy days", "winding down before bed"]
+  },
+  "banned": {
+    "en": [
+      "cure", "cures", "heal", "heals", "healing", "treat", "treats", "treatment", "therapy", "therapeutic", "medical", "medicine",
+      "medication", "drug", "prescription", "doctor", "clinically", "clinical", "proven", "miracle", "magic", "instant relief",
+      "pain-free", "pain free", "painkiller", "anti-inflammatory", "inflammation", "arthritis", "rheumatism", "sciatica", "gout",
+      "disease", "permanent", "100% effective", "no side effects", "say goodbye to pain", "guaranteed results", "FDA", "HSA"
+    ],
+    "zh": [
+      "治愈", "治疗", "根治", "治本", "疗效", "药效", "药物", "医治", "医生", "临床", "消炎", "止痛", "镇痛", "关节炎", "风湿",
+      "痛风", "神奇", "奇效", "特效", "无副作用", "100%有效", "永久", "告别疼痛", "无痛", "处方", "保证有效"
+    ]
+  },
+  "rules": [
+    "Use the approved claims word for word, or say nothing about effects at all: talk about warmth, the ritual, the tradition, the gift, the offer.",
+    "Never address the viewer's body, health, age or condition (no 'your knee pain', no 'are you over 60'); show people instead.",
+    "No before-and-after comparisons, no doctors or lab coats, no medical settings, no comparisons with named products.",
+    "Show the real product (the photo) whenever the product is on screen; never invent a different bottle or label."
+  ]
+}

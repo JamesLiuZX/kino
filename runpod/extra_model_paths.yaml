@@ -1,0 +1,29 @@
+# Model folders on the RunPod network volume. Serverless workers mount the
+# volume at /runpod-volume; a pod mounts the same volume at /workspace, which is
+# where download-models.sh puts files (/workspace/models/<folder>/...).
+#
+# Covers every folder Kino's apps use (diffusion_models, text_encoders,
+# latent_upscale_models and frame_interpolation are missing from the stock
+# worker-comfyui file).
+runpod_worker_comfy:
+  base_path: /runpod-volume
+  checkpoints: models/checkpoints/
+  diffusion_models: |
+    models/diffusion_models/
+    models/unet/
+  unet: models/unet/
+  text_encoders: |
+    models/text_encoders/
+    models/clip/
+  clip: models/clip/
+  clip_vision: models/clip_vision/
+  vae: models/vae/
+  loras: models/loras/
+  upscale_models: models/upscale_models/
+  latent_upscale_models: models/latent_upscale_models/
+  frame_interpolation: models/frame_interpolation/
+  audio_encoders: models/audio_encoders/
+  model_patches: models/model_patches/
+  controlnet: models/controlnet/
+  embeddings: models/embeddings/
+  configs: models/configs/
