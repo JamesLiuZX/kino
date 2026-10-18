@@ -2,7 +2,7 @@
 // optional Claude key, and a connection test that says what's actually ready.
 
 import { h, icon, api, toast, fail, replace } from "./ui.mjs"
-import { state, on, emit } from "./state.mjs"
+import { state, on, emit, isWeb, fullStudioUrl } from "./state.mjs"
 
 const BACKENDS = [
   { id: "mock", label: "Demo", icon: "sparkles", blurb: "No GPU. Placeholder results made on this computer, for trying every tool and the Ad Studio." },
@@ -11,6 +11,7 @@ const BACKENDS = [
 ]
 
 export function mountSettings(root) {
+  if (isWeb()) return mountWebSettings(root)
   const s = () => state.boot.settings
   let provider = s().provider.value
   let testing = false
@@ -135,3 +136,36 @@ export function mountSettings(root) {
   render()
   return () => offs.forEach((off) => off())
 }
+
+/** The web demo has nothing to connect: say what runs here and where the full studio is. */
+function mountWebSettings(root) {
+  const repo = fullStudioUrl()
+  root.append(
+    h(
+      "div.page.settings",
+      {},
+      h("header.page-head", {}, h("div", {}, h("h1", {}, "Settings"), h("p.muted", {}, "This is Kino's web demo: the real interface, running entirely in your browser."))),
+      h(
+        "section.card",
+        {},
+        h("h2", {}, "What runs here"),
+        h(
+          "ul.readiness",
+          {},
+          h("li.ok", {}, icon("check"), h("strong", {}, "Real: "), "camera moves, the ad script, the compliance check, and the edit with captions, end card and music."),
+          h("li.ok", {}, icon("check"), h("strong", {}, "Private: "), "photos and recordings you add stay in this tab. Nothing is uploaded, and nothing is saved: reload to start fresh."),
+          h("li.bad", {}, icon("info"), h("strong", {}, "Stand-ins: "), "images, AI video, photo edits and talking photos. Those need the models on a GPU."),
+        ),
+        h(
+          "div.row",
+          {},
+          h("a.btn.primary", { href: repo, target: "_blank", rel: "noopener" }, icon("download"), "Get Kino on GitHub"),
+          h("a.btn", { href: `${repo}/runpod`, target: "_blank", rel: "noopener" }, icon("cpu"), "Connect a GPU (RunPod guide)"),
+        ),
+      ),
+      h("p.muted.small.center", {}, "Made by ", h("a.link", { href: "https://jamesliuzx.com/projects/kino", target: "_blank", rel: "noopener" }, "James Liu"), " · read the case study"),
+    ),
+  )
+  return () => {}
+}
+

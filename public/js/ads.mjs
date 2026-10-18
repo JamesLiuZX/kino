@@ -234,7 +234,7 @@ export function mountAds(root) {
         h(
           "div.row.wrap",
           {},
-          out ? h("button.btn.primary", { type: "button", onclick: () => download(out) }, icon("download"), "Download MP4") : null,
+          out ? h("button.btn.primary", { type: "button", onclick: () => download(out) }, icon("download"), `Download ${(out.file?.split(".").pop() || "mp4").toUpperCase()}`) : null,
           ad.brief.postCopy?.primaryText ? h("button.btn", { type: "button", onclick: () => copyText(postText(ad.brief), "Post text copied") }, icon("copy"), "Copy post text") : null,
           out
             ? h(

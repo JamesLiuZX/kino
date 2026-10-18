@@ -16,6 +16,14 @@ It starts in **demo mode**: every tool works and produces real files
 (placeholder renders, real camera moves, real ad edits), so you can try the
 whole studio before connecting a GPU. Connect one in **Settings**.
 
+## Try it in your browser
+
+The web demo at [jamesliuzx.com/kino](https://jamesliuzx.com/kino/) runs this
+interface with the server swapped for an engine in the page
+([web/](web/README.md)): ad scripts, the compliance check, camera moves and the
+finished ad edit are real; the AI models need the full studio and a GPU, so
+their results there are labelled stand-ins.
+
 ## What's inside
 
 Two depths over the same engine, switched from the top bar (Kino remembers

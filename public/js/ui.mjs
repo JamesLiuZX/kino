@@ -54,6 +54,13 @@ export function replace(el, ...children) {
 export class ApiError extends Error {}
 
 export async function api(path, { method = "GET", body, headers = {} } = {}) {
+  if (window.kinoDemo) {
+    try {
+      return await window.kinoDemo.api(path, { method, body })
+    } catch (err) {
+      throw Object.assign(new ApiError(err.message), { status: err.status ?? 400 })
+    }
+  }
   const init = { method, headers: { ...headers } }
   if (body !== undefined) {
     init.headers["Content-Type"] = "application/json"
@@ -78,6 +85,7 @@ export async function api(path, { method = "GET", body, headers = {} } = {}) {
 
 /** Upload with progress (fetch can't report upload progress). */
 export function upload(file, onProgress = () => {}) {
+  if (window.kinoDemo) return window.kinoDemo.upload(file, onProgress).catch((err) => Promise.reject(new ApiError(err.message)))
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest()
     xhr.open("POST", "/api/assets")

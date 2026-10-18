@@ -5,7 +5,7 @@
 // as the Studio, so switching to Advanced keeps your work.
 
 import { h, icon, api, upload, toast, fail, store, aspectGlyph, fmtSeconds, replace } from "./ui.mjs"
-import { state, on, appById, cameraById, styleById, isDemo, watched, viewState } from "./state.mjs"
+import { state, on, appById, cameraById, styleById, isDemo, isWeb, fullStudioUrl, watched, viewState } from "./state.mjs"
 import { cameraThumb, openCameraSheet, STYLE_SWATCH } from "./pickers.mjs"
 import { openLightbox, ring, download } from "./media.mjs"
 import { openRecorder } from "./recorder.mjs"
@@ -550,7 +550,11 @@ export function mountFlow(root, taskId) {
       h(
         "p.cta-note",
         {},
-        isDemo()
+        isWeb()
+          ? app?.gpu
+            ? [icon("info"), "Web demo: a stand-in made in your browser. ", h("a.link", { href: fullStudioUrl(), target: "_blank", rel: "noopener" }, "Get the full studio")]
+            : [icon("check"), "Runs in your browser, for real"]
+          : isDemo()
           ? [icon("info"), "Demo mode: a placeholder is made on this computer. ", h("a.link", { href: "#/settings" }, "Connect a GPU")]
           : app?.gpu
             ? [icon("bolt"), `Runs on your GPU · ${app.model}`]

@@ -1,0 +1,408 @@
+{
+ "assets": [
+  {
+   "id": "a_mvck6d8nf5d098",
+   "kind": "image",
+   "mime": "image/webp",
+   "file": "a_mvck6d8nf5d098.webp",
+   "width": 738,
+   "height": 1186,
+   "duration": 0,
+   "hasAudio": false,
+   "bytes": 169942,
+   "name": "HerbalBath · cutout",
+   "source": "brand",
+   "favorite": false,
+   "createdAt": 1792251346056,
+   "brandImage": "herbalbath:cutout",
+   "url": "media/a_mvck6d8nf5d098.webp",
+   "thumbUrl": "media/a_mvck6d8nf5d098.webp"
+  },
+  {
+   "id": "a_mvck6cxn23fa75",
+   "kind": "image",
+   "mime": "image/jpeg",
+   "file": "a_mvck6cxn23fa75.jpg",
+   "width": 1200,
+   "height": 1200,
+   "duration": 0,
+   "hasAudio": false,
+   "bytes": 192598,
+   "name": "HerbalBath · photo",
+   "source": "brand",
+   "favorite": false,
+   "createdAt": 1792251346055,
+   "brandImage": "herbalbath:photo",
+   "url": "media/a_mvck6cxn23fa75.jpg",
+   "thumbUrl": "media/a_mvck6cxn23fa75.jpg"
+  },
+  {
+   "id": "a_mvcla0f848d9b1",
+   "kind": "video",
+   "mime": "video/mp4",
+   "file": "a_mvcla0f848d9b1.mp4",
+   "width": 720,
+   "height": 1280,
+   "duration": 16.5,
+   "hasAudio": true,
+   "bytes": 1308610,
+   "name": "",
+   "source": "ad",
+   "favorite": false,
+   "createdAt": 1792253195966,
+   "appId": "ad-render",
+   "tool": "ads",
+   "model": "Kino editor (ffmpeg)",
+   "prompt": "",
+   "values": {
+    "adId": "ad_mvcl9gkf6d080a",
+    "platform": "tiktok"
+   },
+   "parents": [],
+   "demo": false,
+   "adId": "ad_mvcl9gkf6d080a",
+   "url": "media/a_mvcla0f848d9b1.mp4",
+   "thumbUrl": "media/thumb-a_mvcla0f848d9b1.jpg"
+  },
+  {
+   "id": "a_mvd0ivfqd566c3",
+   "kind": "video",
+   "mime": "video/mp4",
+   "file": "a_mvd0ivfqd566c3.mp4",
+   "width": 720,
+   "height": 1280,
+   "duration": 16.5,
+   "hasAudio": true,
+   "bytes": 1311998,
+   "name": "",
+   "source": "ad",
+   "favorite": false,
+   "createdAt": 1792278803714,
+   "appId": "ad-render",
+   "tool": "ads",
+   "model": "Kino editor (ffmpeg)",
+   "prompt": "",
+   "values": {
+    "adId": "ad_mvd0i4uy5ce8ef",
+    "platform": "tiktok"
+   },
+   "parents": [],
+   "demo": false,
+   "adId": "ad_mvd0i4uy5ce8ef",
+   "url": "media/a_mvd0ivfqd566c3.mp4",
+   "thumbUrl": "media/thumb-a_mvd0ivfqd566c3.jpg"
+  },
+  {
+   "id": "a_mvcl97i4523514",
+   "kind": "video",
+   "mime": "video/mp4",
+   "file": "a_mvcl97i4523514.mp4",
+   "width": 720,
+   "height": 1280,
+   "duration": 4,
+   "hasAudio": false,
+   "bytes": 354791,
+   "name": "",
+   "source": "generated",
+   "favorite": false,
+   "createdAt": 1792253158432,
+   "appId": "video-instant",
+   "tool": "video",
+   "model": "Kino motion (local, no GPU)",
+   "prompt": "",
+   "values": {
+    "image": "a_mvck6cxn23fa75",
+    "camera": "push-in",
+    "aspect": "9:16",
+    "duration": 4
+   },
+   "parents": [
+    "a_mvck6cxn23fa75"
+   ],
+   "demo": false,
+   "url": "media/a_mvcl97i4523514.mp4",
+   "thumbUrl": "media/thumb-a_mvcl97i4523514.jpg"
+  },
+  {
+   "id": "a_mvcloq7u907ae2",
+   "kind": "video",
+   "mime": "video/mp4",
+   "file": "a_mvcloq7u907ae2.mp4",
+   "width": 720,
+   "height": 1280,
+   "duration": 4,
+   "hasAudio": false,
+   "bytes": 338303,
+   "name": "",
+   "source": "generated",
+   "favorite": false,
+   "createdAt": 1792253882605,
+   "appId": "video-instant",
+   "tool": "video",
+   "model": "Kino motion (local, no GPU)",
+   "prompt": "",
+   "values": {
+    "image": "a_mvclod9hcc4db5",
+    "camera": "orbit",
+    "aspect": "9:16",
+    "duration": 4
+   },
+   "parents": [
+    "a_mvclod9hcc4db5"
+   ],
+   "demo": false,
+   "url": "media/a_mvcloq7u907ae2.mp4",
+   "thumbUrl": "media/thumb-a_mvcloq7u907ae2.jpg"
+  }
+ ],
+ "ads": [
+  {
+   "id": "ad_mvcl9gkf6d080a",
+   "brandId": "herbalbath",
+   "engine": "instant",
+   "productAssetId": "a_mvck6cxn23fa75",
+   "cutoutAssetId": "a_mvck6d8nf5d098",
+   "musicAssetId": null,
+   "brief": {
+    "id": "ad_mvcl9gkf6d080a",
+    "brandId": "herbalbath",
+    "platform": "tiktok",
+    "aspect": "9:16",
+    "language": "zh",
+    "title": "Daily ritual · template",
+    "angle": "ritual",
+    "hook": "忙了一天，给自己一点温暖",
+    "shots": [
+     {
+      "id": "s1",
+      "role": "hook",
+      "seconds": 2.5,
+      "source": "product-photo",
+      "visual": "warm evening light slowly sweeps across the product on a wooden side table, soft steam from a cup of tea in the background",
+      "camera": "hero-reveal",
+      "caption": "忙了一天，给自己一点温暖",
+      "voiceover": ""
+     },
+     {
+      "id": "s2",
+      "role": "moment",
+      "seconds": 3,
+      "source": "generate",
+      "visual": "a cheerful Singaporean Chinese grandmother in her sixties sitting on a sofa in a cosy HDB flat in the evening, gently rolling her shoulders and smiling, warm lamp light",
+      "camera": "push-in",
+      "caption": "睡前放松，喷一喷",
+      "voiceover": ""
+     },
+     {
+      "id": "s3",
+      "role": "how",
+      "seconds": 3,
+      "source": "generate",
+      "visual": "close-up of a hand pressing gently on a shoulder over a soft cotton shirt, warm golden light, calm and relaxed",
+      "camera": "static",
+      "caption": "10秒感受温热",
+      "voiceover": ""
+     },
+     {
+      "id": "s4",
+      "role": "product",
+      "seconds": 3,
+      "source": "product-photo",
+      "visual": "studio light glides across the bottle and box, soft shadows, clean cream background",
+      "camera": "product-spin",
+      "caption": "100%天然成分",
+      "voiceover": ""
+     },
+     {
+      "id": "s5",
+      "role": "offer",
+      "seconds": 2.5,
+      "source": "product-photo",
+      "visual": "the product in soft daylight, gentle push toward the label",
+      "camera": "push-in",
+      "caption": "S$39 · 买3送1 + 免费送货",
+      "voiceover": ""
+     }
+    ],
+    "endCard": {
+     "headline": "试试没药的温热",
+     "offer": "S$39 · 买3送1 + 免费送货",
+     "cta": "立即订购 herbalbathsg.com",
+     "seconds": 2.5
+    },
+    "music": "calm",
+    "postCopy": {
+     "primaryText": "10秒感受温热，一瓶可用3-4个月。买3送1 + 免费送货，30天不满意，全额退款。立即订购 herbalbathsg.com",
+     "headline": "没药草本能量油 S$39",
+     "hashtags": [
+      "#没药喷雾",
+      "#新加坡",
+      "#HerbalBath",
+      "#孝顺",
+      "#天然"
+     ]
+    },
+    "notes": "Written from the brand's approved wording; nothing here goes beyond what the website already says.",
+    "seconds": 16.5
+   },
+   "issues": [],
+   "status": "done",
+   "shots": {
+    "s1": {
+     "status": "done",
+     "clipAssetId": "a_mvck6cxn23fa75"
+    },
+    "s2": {
+     "status": "done",
+     "clipAssetId": null
+    },
+    "s3": {
+     "status": "done",
+     "clipAssetId": null
+    },
+    "s4": {
+     "status": "done",
+     "clipAssetId": "a_mvck6cxn23fa75"
+    },
+    "s5": {
+     "status": "done",
+     "clipAssetId": "a_mvck6cxn23fa75"
+    }
+   },
+   "renders": [
+    {
+     "platform": "tiktok",
+     "status": "done",
+     "assetId": "a_mvcla0f848d9b1",
+     "createdAt": 1792253169952
+    }
+   ],
+   "outputAssetId": "a_mvcla0f848d9b1",
+   "createdAt": 1792253169952
+  },
+  {
+   "id": "ad_mvd0i4uy5ce8ef",
+   "brandId": "herbalbath",
+   "engine": "instant",
+   "productAssetId": "a_mvck6cxn23fa75",
+   "cutoutAssetId": "a_mvck6d8nf5d098",
+   "musicAssetId": null,
+   "brief": {
+    "id": "ad_mvd0i4uy5ce8ef",
+    "brandId": "herbalbath",
+    "platform": "tiktok",
+    "aspect": "9:16",
+    "language": "zh",
+    "title": "Gift for parents · template",
+    "angle": "gift",
+    "hook": "给爸妈的一份温暖",
+    "shots": [
+     {
+      "id": "s1",
+      "role": "hook",
+      "seconds": 2.5,
+      "source": "generate",
+      "visual": "a Singaporean woman in her thirties handing a small wrapped gift to her smiling elderly father in a bright HDB living room, warm afternoon light",
+      "camera": "push-in",
+      "caption": "给爸妈的一份温暖",
+      "voiceover": ""
+     },
+     {
+      "id": "s2",
+      "role": "product",
+      "seconds": 3,
+      "source": "product-photo",
+      "visual": "warm light rises over the bottle and box like a gift being unwrapped",
+      "camera": "hero-reveal",
+      "caption": "没药草本能量油",
+      "voiceover": ""
+     },
+     {
+      "id": "s3",
+      "role": "moment",
+      "seconds": 3,
+      "source": "generate",
+      "visual": "an elderly Singaporean Chinese couple laughing together on a park bench in Singapore in the morning after tai chi, relaxed, soft sunlight through trees",
+      "camera": "pan-right",
+      "caption": "晨练之后",
+      "voiceover": ""
+     },
+     {
+      "id": "s4",
+      "role": "claim",
+      "seconds": 3,
+      "source": "product-photo",
+      "visual": "slow turn of the product, light gliding over the glass",
+      "camera": "product-spin",
+      "caption": "一瓶可用3-4个月",
+      "voiceover": ""
+     },
+     {
+      "id": "s5",
+      "role": "offer",
+      "seconds": 2.5,
+      "source": "product-photo",
+      "visual": "the product and box in soft daylight",
+      "camera": "push-in",
+      "caption": "S$39 · 买3送1 + 免费送货",
+      "voiceover": ""
+     }
+    ],
+    "endCard": {
+     "headline": "送爸妈一份温暖",
+     "offer": "S$39 · 买3送1 + 免费送货",
+     "cta": "立即订购 herbalbathsg.com",
+     "seconds": 2.5
+    },
+    "music": "calm",
+    "postCopy": {
+     "primaryText": "10秒感受温热，一瓶可用3-4个月。买3送1 + 免费送货，30天不满意，全额退款。立即订购 herbalbathsg.com",
+     "headline": "没药草本能量油 S$39",
+     "hashtags": [
+      "#没药喷雾",
+      "#新加坡",
+      "#HerbalBath",
+      "#孝顺",
+      "#天然"
+     ]
+    },
+    "notes": "Written from the brand's approved wording; nothing here goes beyond what the website already says.",
+    "seconds": 16.5
+   },
+   "issues": [],
+   "status": "done",
+   "shots": {
+    "s1": {
+     "status": "done",
+     "clipAssetId": null
+    },
+    "s2": {
+     "status": "done",
+     "clipAssetId": "a_mvck6cxn23fa75"
+    },
+    "s3": {
+     "status": "done",
+     "clipAssetId": null
+    },
+    "s4": {
+     "status": "done",
+     "clipAssetId": "a_mvck6cxn23fa75"
+    },
+    "s5": {
+     "status": "done",
+     "clipAssetId": "a_mvck6cxn23fa75"
+    }
+   },
+   "renders": [
+    {
+     "platform": "tiktok",
+     "status": "done",
+     "assetId": "a_mvd0ivfqd566c3",
+     "createdAt": 1792278768924
+    }
+   ],
+   "outputAssetId": "a_mvd0ivfqd566c3",
+   "createdAt": 1792278768924
+  }
+ ]
+}

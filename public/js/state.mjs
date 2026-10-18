@@ -36,6 +36,9 @@ export const styleById = (id) => state.boot?.presets.styles.find((s) => s.id ===
 export const audioById = (id) => state.boot?.presets.audio.find((a) => a.id === id)
 
 export const isDemo = () => state.boot?.provider.id === "mock"
+/** The web demo: the interface running on an in-browser engine (kino/web). */
+export const isWeb = () => !!state.boot?.provider.web
+export const fullStudioUrl = () => state.boot?.web?.repo ?? "https://github.com/JamesLiuZX/james-portfolio/tree/main/kino"
 
 /** Ask the Create view to load an app with values (Remix, Animate, Edit…). */
 export function compose(request) {

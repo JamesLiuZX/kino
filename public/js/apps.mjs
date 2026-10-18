@@ -2,7 +2,7 @@
 // and importing your own ComfyUI workflows as one-box apps.
 
 import { h, icon, api, toast, fail, confirmDialog, fmtSeconds, copyText, replace } from "./ui.mjs"
-import { state, on, toolById } from "./state.mjs"
+import { state, on, toolById, isWeb, fullStudioUrl } from "./state.mjs"
 
 export function mountApps(root) {
   let models = null
@@ -37,7 +37,7 @@ export function mountApps(root) {
       statusEl,
       h(`span.dot.${p.id === "mock" ? "warn" : s?.ok === false ? "bad" : "ok"}`),
       h("span", {}, s?.label ?? p.label),
-      h("a.link", { href: "#/settings" }, p.id === "mock" ? "Connect a GPU" : "Change"),
+      isWeb() ? h("a.link", { href: fullStudioUrl(), target: "_blank", rel: "noopener" }, "Get the full studio") : h("a.link", { href: "#/settings" }, p.id === "mock" ? "Connect a GPU" : "Change"),
     )
   }
 

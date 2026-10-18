@@ -3,7 +3,7 @@
 // results to pick up from.
 
 import { h, icon, replace } from "./ui.mjs"
-import { state, on, cameraById, isDemo, setMode } from "./state.mjs"
+import { state, on, cameraById, isDemo, isWeb, setMode } from "./state.mjs"
 import { cameraThumb } from "./pickers.mjs"
 import { openLightbox, actionsFor } from "./media.mjs"
 import { wordsFor } from "./flow.mjs"
@@ -21,7 +21,7 @@ export function mountHome(root) {
 
   function renderHero() {
     const p = state.boot.provider
-    const status = p.id === "mock" ? "Demo mode · try anything, nothing to set up" : `Connected · ${p.id === "runpod" ? "RunPod" : "ComfyUI"}`
+    const status = isWeb() ? "Web demo · runs in your browser, nothing to install" : p.id === "mock" ? "Demo mode · try anything, nothing to set up" : `Connected · ${p.id === "runpod" ? "RunPod" : "ComfyUI"}`
     replace(
       hero,
       h(

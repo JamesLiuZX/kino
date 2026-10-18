@@ -2,7 +2,7 @@
 // and the live event stream.
 
 import { h, icon, api, toast, replace } from "./ui.mjs"
-import { state, on, emit, mode, setMode, viewState } from "./state.mjs"
+import { state, on, emit, mode, setMode, viewState, isWeb } from "./state.mjs"
 import { mountCreate } from "./create.mjs"
 import { mountLibrary } from "./library.mjs"
 import { mountAds } from "./ads.mjs"
@@ -105,9 +105,9 @@ function renderStatus() {
   if (!statusEl) return
   const p = state.boot.provider
   const kind = p.error ? "bad" : p.id === "mock" ? "warn" : "ok"
-  const text = p.id === "mock" ? "Demo mode" : p.id === "runpod" ? "RunPod" : "ComfyUI"
+  const text = isWeb() ? "Web demo" : p.id === "mock" ? "Demo mode" : p.id === "runpod" ? "RunPod" : "ComfyUI"
   replace(statusEl, h(`span.dot.${kind}${kind === "ok" ? ".live" : ""}`), h("span.status-text", {}, text))
-  statusEl.title = p.id === "mock" ? "Demo mode: placeholder results made on this computer. Connect a GPU in Settings." : p.label
+  statusEl.title = isWeb() ? "Web demo: everything runs in your browser. The AI models need the full studio." : p.id === "mock" ? "Demo mode: placeholder results made on this computer. Connect a GPU in Settings." : p.label
 }
 
 /** Switch mode and carry what you were doing across. */
@@ -196,6 +196,14 @@ on("open-task", ({ task, values }) => openTask(task, values))
 // ---------------------------------------------------------------- live updates
 
 function connect() {
+  if (window.kinoDemo) {
+    const apply = { job: (j) => state.jobs.set(j.id, j), "job-removed": ({ id }) => state.jobs.delete(id), asset: (a) => state.assets.set(a.id, a), "asset-removed": ({ id }) => state.assets.delete(id), ad: (a) => state.ads.set(a.id, a), "ad-removed": ({ id }) => state.ads.delete(id) }
+    window.kinoDemo.subscribe((type, data) => {
+      apply[type]?.(data)
+      emit(type, data)
+    })
+    return
+  }
   const es = new EventSource("/api/events")
   const relay = (type, apply) =>
     es.addEventListener(type, (e) => {

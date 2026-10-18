@@ -5,6 +5,7 @@
 
 import { readFile } from "node:fs/promises"
 import { cameraById, styleById } from "./presets.mjs"
+import { ruleEnhance } from "./prompt.mjs"
 
 // Server-side refusal fallbacks exist on these models only; elsewhere the
 // parameter is a 400.
@@ -92,13 +93,6 @@ const ENHANCE_SYSTEM = {
   talk: `You write a short performance note for a talking-photo model (LTX lip-sync): how the person in the photo should look and move while speaking (expression, small head movements, gestures, setting). 20-40 words. Do not write the spoken words.`,
 }
 
-const RULE_TAILS = {
-  image: "highly detailed, natural light, sharp focus, balanced composition",
-  video: "natural, fluid motion, consistent subject and lighting throughout",
-  edit: "",
-  talk: "",
-}
-
 /**
  * Returns { prompt, source: "claude" | "rules", note? }.
  * `image` is an optional local file path shown to Claude for context.
@@ -128,13 +122,6 @@ export async function enhancePrompt(settings, { tool, prompt, image, camera, sty
     return { prompt: ruleEnhance(kind, idea), source: "rules", note: e.message }
   }
   return { prompt: ruleEnhance(kind, idea), source: "rules" }
-}
-
-function ruleEnhance(kind, idea) {
-  if (!idea) return idea
-  if (kind === "edit") return /^(change|make|replace|remove|add|turn|put)\b/i.test(idea) ? idea : `Edit the photo: ${idea}. Keep everything else exactly the same.`
-  const tail = RULE_TAILS[kind]
-  return tail && !idea.includes(tail) ? `${idea.replace(/[.\s]+$/, "")}, ${tail}` : idea
 }
 
 /** Structured JSON from Claude, or null when Claude isn't set up. */

@@ -39,3 +39,19 @@ export function wanPrompt({ prompt, camera, style }) {
 export function talkingPrompt({ prompt }) {
   return clean(prompt) || "The person looks into the camera and speaks naturally, with small head movements and natural blinking."
 }
+
+// Without Claude, prompts get a model-friendly tail (images, video) or an
+// explicit edit instruction. Pure, so the web demo uses it too.
+const RULE_TAILS = {
+  image: "highly detailed, natural light, sharp focus, balanced composition",
+  video: "natural, fluid motion, consistent subject and lighting throughout",
+  edit: "",
+  talk: "",
+}
+
+export function ruleEnhance(kind, idea) {
+  if (!idea) return idea
+  if (kind === "edit") return /^(change|make|replace|remove|add|turn|put)\b/i.test(idea) ? idea : `Edit the photo: ${idea}. Keep everything else exactly the same.`
+  const tail = RULE_TAILS[kind]
+  return tail && !idea.includes(tail) ? `${idea.replace(/[.\s]+$/, "")}, ${tail}` : idea
+}
