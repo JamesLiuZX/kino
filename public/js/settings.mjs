@@ -140,6 +140,11 @@ export function mountSettings(root) {
 /** The web demo has nothing to connect: say what runs here and where the full studio is. */
 function mountWebSettings(root) {
   const repo = fullStudioUrl()
+  const deviceEl = h("span", {}, "in your browser")
+  window.kinoDemo
+    ?.device?.()
+    .then((d) => (deviceEl.textContent = d === "webgpu" ? "on your graphics chip (WebGPU)" : "on your processor (WebAssembly)"))
+    .catch(() => {})
   root.append(
     h(
       "div.page.settings",
@@ -153,8 +158,9 @@ function mountWebSettings(root) {
           "ul.readiness",
           {},
           h("li.ok", {}, icon("check"), h("strong", {}, "Real: "), "camera moves, the ad script, the compliance check, and the edit with captions, end card and music."),
+          h("li.ok", {}, icon("check"), h("strong", {}, "Real AI, on this device: "), "background removal (IS-Net) and photo upscaling (Real-ESRGAN), run ", deviceEl, ". Each model downloads once, the first time you use it."),
           h("li.ok", {}, icon("check"), h("strong", {}, "Private: "), "photos and recordings you add stay in this tab. Nothing is uploaded, and nothing is saved: reload to start fresh."),
-          h("li.bad", {}, icon("info"), h("strong", {}, "Stand-ins: "), "images, AI video, photo edits and talking photos. Those need the models on a GPU."),
+          h("li.bad", {}, icon("info"), h("strong", {}, "Stand-ins: "), "generated images, AI video, photo edits, talking photos and video upscaling. Those need the models on a GPU."),
         ),
         h(
           "div.row",

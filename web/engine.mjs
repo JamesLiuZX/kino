@@ -1,10 +1,11 @@
 // Kino's web demo: the real interface, with the server replaced by this file.
 // It answers the same /api routes from memory, so every screen works as it
 // does in the studio. Ad scripts and compliance use the server's own modules,
-// camera moves and the ad edit render on a canvas, and nothing leaves the
-// page: uploads and recordings stay in this tab. The AI models (images, video,
-// voice) need the full studio and a GPU, so their results here are stand-ins
-// and say so.
+// camera moves and the ad edit render on a canvas, background removal and
+// photo upscaling run real models on the visitor's device (ai.mjs), and nothing
+// leaves the page: uploads and recordings stay in this tab. The other models
+// (images, video, edits, voice) need the full studio and a GPU, so their
+// results here are stand-ins and say so.
 
 import { ruleEnhance } from "./lib/prompt.js"
 import { templateBrief } from "./lib/ads/templates.js"
@@ -12,6 +13,7 @@ import { checkBrief } from "./lib/ads/compliance.js"
 import { normalizeBrief, briefProblems } from "./lib/ads/schema.js"
 import { platformById } from "./lib/ads/platforms.js"
 import * as R from "./render.js"
+import * as AI from "./ai.js"
 
 const SEED = new URL("./seed/", import.meta.url)
 const boot = { value: null }
@@ -45,6 +47,7 @@ async function load() {
   const [b, state, m] = await Promise.all([get("bootstrap.json"), get("state.json"), get("models.json").catch(() => ({ models: [] }))])
   boot.value = b
   models = m
+  b.web = { ...b.web, local: await localApps() }
   for (const brand of await Promise.all(b.ads.brands.map((x) => get(`brands/${x.id}.json`)))) brands.set(brand.id, brand)
   // The seed was made earlier; show it as made a few minutes ago.
   const newest = Math.max(...state.assets.map((a) => a.createdAt), ...state.ads.map((a) => a.createdAt))
@@ -55,11 +58,21 @@ async function load() {
 }
 const ready = load()
 
+// Apps that run for real here, for the interface to say so.
+async function localApps() {
+  const local = { "video-instant": { note: "" } }
+  const sizes = await AI.models().catch(() => null)
+  if (sizes?.cutout) local.cutout = { note: `IS-Net downloads once (${Math.round(sizes.cutout.bytes / 1e6)} MB).` }
+  if (sizes?.upscale) local["upscale-image"] = { note: `Real-ESRGAN downloads once (${Math.round(sizes.upscale.bytes / 1e6)} MB).` }
+  return local
+}
+
 // ---------------------------------------------------------------- views
 
 function brandView(b) {
   return { id: b.id, name: b.name, product: b.product, colors: b.colors, offer: b.offer, cta: b.cta, claims: b.claims, banned: b.banned, audience: b.audience, voice: b.voice }
 }
+const runsHere = (appId) => !!boot.value.web?.local?.[appId]
 const brandAsset = (brandId, kind) => [...assets.values()].find((a) => a.brandImage === `${brandId}:${kind}`)
 const appById = (id) => boot.value.apps.find((a) => a.id === id)
 
@@ -200,11 +213,12 @@ async function pump() {
         jobId: job.id,
         appId: job.appId,
         tool: job.tool,
-        model: job.model,
+        model: o.model ?? job.model,
         prompt: job.values.prompt ?? "",
         values: job.values,
         parents,
-        demo: true,
+        demo: !o.real,
+        ...(job.note ? { note: job.note } : {}),
         ...(job.adId ? { adId: job.adId } : {}),
       }),
     )
@@ -245,30 +259,45 @@ async function run(job, signal) {
       return [await R.textImage(v)]
     }
     case "edit": {
-      await modelPhase(job, signal)
       const placing = /^Place this product/i.test(v.prompt ?? "")
       const source = assets.get(v.image)
+      if (!placing) {
+        await modelPhase(job, signal)
+        return [await R.gradeImage({ image: source.url, prompt: v.prompt })]
+      }
+      // The product is real (the brand's cut-out, or one made here); the set is a stand-in.
       const brand = source?.brandImage?.split(":")[0]
       const cut = brand ? brandAsset(brand, "cutout") : null
-      if (placing) return [await R.productScene({ product: cut?.url ?? source.url, prompt: v.prompt })]
-      return [await R.gradeImage({ image: source.url, prompt: v.prompt })]
+      let product = cut?.url
+      const img = product ? null : await R.loadImage(source.url)
+      const already = img && (await AI.trimmed(img))
+      if (already) product = URL.createObjectURL(already.blob)
+      if (!product) {
+        const made = runsHere("cutout") && (await tryModel(job, signal, async () => {
+          const out = await AI.cutout(img, { crop: true, signal, onProgress: (p, msg) => progress(job, p * 0.8, msg) })
+          return out.empty ? null : out
+        }))
+        product = made ? URL.createObjectURL(made.blob) : source.url
+      } else await modelPhase(job, signal)
+      progress(job, 0.85, "Setting the scene")
+      return [await R.productScene({ product, prompt: v.prompt })]
     }
     case "cutout": {
-      await modelPhase(job, signal, 1)
       const source = assets.get(v.image)
-      const brand = source?.brandImage?.split(":")[0]
-      const cut = brand ? brandAsset(brand, "cutout") : null
-      if (cut) {
-        const blob = await (await fetch(cut.url)).blob()
-        return [{ blob, mime: blob.type || "image/webp", ext: cut.file.split(".").pop(), width: cut.width, height: cut.height }]
-      }
+      const made = runsHere("cutout") && (await tryModel(job, signal, async () => AI.cutout(await R.loadImage(source.url), { signal, onProgress: (p, msg) => progress(job, p, msg) })))
+      if (made) return [{ ...made, real: true }]
+      await modelPhase(job, signal, 1)
       return [await R.softCutout({ image: source.url })]
     }
-    case "upscale-image":
+    case "upscale-image": {
+      const factor = v.scale === "4x" ? 4 : 2
+      const made = runsHere("upscale-image") && (await tryModel(job, signal, async () => AI.upscale(await R.loadImage(src(v.image)), { factor, signal, onProgress: (p, msg) => progress(job, p, msg) })))
+      if (made) return [{ ...made, real: true }]
       await modelPhase(job, signal, 1.2)
       return [await R.upscale({ image: src(v.image), scale: v.scale })]
+    }
     case "video-instant":
-      return [await R.cameraMove({ image: src(v.image), camera: v.camera, aspect: v.aspect, duration: v.duration, onProgress: (p) => progress(job, p * 0.99, "Moving the camera"), signal })]
+      return [{ ...(await R.cameraMove({ image: src(v.image), camera: v.camera, aspect: v.aspect, duration: v.duration, onProgress: (p) => progress(job, p * 0.99, "Moving the camera"), signal })), real: true }]
     case "video-pro":
     case "video-draft":
     case "video-scene": {
@@ -293,10 +322,30 @@ async function run(job, signal) {
       const blob = await (await fetch(source.url)).blob()
       return [{ blob, mime: source.mime, ext: source.file.split(".").pop(), width: source.width, height: source.height, duration: source.duration, poster: source.thumbUrl ? await (await fetch(source.thumbUrl)).blob() : null }]
     }
-    case "ad-render":
-      return [await renderAdJob(job, signal)]
+    case "ad-render": {
+      // The edit is real; it's a demo result only if it shows stand-in scenes.
+      const ad = ads.get(v.adId)
+      return [{ ...(await renderAdJob(job, signal)), real: !ad?.brief.shots.some((s) => s.source === "generate") }]
+    }
     default:
       throw new HttpError(400, FULL)
+  }
+}
+
+/**
+ * Run one of the in-browser models. If this browser can't (no WebAssembly,
+ * not enough memory, the model didn't download), the job carries on with a
+ * stand-in, labelled as one, and says why.
+ */
+async function tryModel(job, signal, fn) {
+  try {
+    return await fn()
+  } catch (e) {
+    if (e.canceled || signal.aborted) throw R.canceled()
+    console.warn("[kino] in-browser model failed, making a stand-in:", e)
+    job.note = `This browser couldn't run the model (${e.message || e}), so this is a stand-in.`
+    progress(job, 0.5, "Making a stand-in instead")
+    return null
   }
 }
 
@@ -557,5 +606,6 @@ async function api(path, { method = "GET", body } = {}) {
 window.kinoDemo = {
   api,
   upload,
+  device: AI.device,
   subscribe: (fn) => (listeners.add(fn), () => listeners.delete(fn)),
 }

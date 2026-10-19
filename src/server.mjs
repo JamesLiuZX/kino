@@ -242,6 +242,8 @@ export function createServer({ dataDir, env = process.env, providerOverride } = 
     const url = new URL(req.url, "http://localhost")
     const path = url.pathname
     try {
+      // For load balancers and container health checks: it's up, and nothing else.
+      if (path === "/healthz") return send(res, 200, { ok: true })
       if (path.startsWith("/api/") && path !== "/api/login" && !authorized(req)) throw new HttpError(401, "Enter the studio's access code.")
       if ((path.startsWith("/files/") || path.startsWith("/thumbs/")) && !authorized(req)) return send(res, 401, "Unauthorized")
 

@@ -21,8 +21,10 @@ whole studio before connecting a GPU. Connect one in **Settings**.
 The web demo at [jamesliuzx.com/kino](https://jamesliuzx.com/kino/) runs this
 interface with the server swapped for an engine in the page
 ([web/](web/README.md)): ad scripts, the compliance check, camera moves and the
-finished ad edit are real; the AI models need the full studio and a GPU, so
-their results there are labelled stand-ins.
+finished ad edit are real, and so are background removal (IS-Net) and photo
+upscaling (Real-ESRGAN), which run on the visitor's device with WebGPU or
+WebAssembly. The generative models need the full studio and a GPU, so their
+results there are labelled stand-ins.
 
 ## What's inside
 
@@ -113,15 +115,18 @@ with server-side refusal fallbacks enabled).
 
 To reach the studio from your phone or share it with a teammate, run it on any
 small server (a VPS, Fly.io, Railway or a RunPod CPU pod). It needs no GPU of
-its own; that's what the ComfyUI or RunPod connection is for.
+its own; that's what the ComfyUI or RunPod connection is for. Every change to
+`kino/` on main publishes the image for Intel and ARM servers, after it has
+started, rendered a camera move and passed its health check
+([`.github/workflows/kino.yml`](../.github/workflows/kino.yml)):
 
 ```bash
-cd kino
-docker build -t kino .
 docker run -d --restart unless-stopped -p 7860:7860 \
   -e KINO_TOKEN=<pick an access code> \
-  -v kino-data:/data kino
+  -v kino-data:/data ghcr.io/jamesliuzx/kino
 ```
+
+Or build it yourself: `docker build -t kino .` in this folder.
 
 - **`KINO_TOKEN` is required** once the studio is reachable from the internet:
   anyone who can open it can spend your GPU time and API credit. The studio asks
@@ -134,6 +139,9 @@ docker run -d --restart unless-stopped -p 7860:7860 \
 - Settings can also come from the environment instead of the Settings page,
   e.g. `KINO_PROVIDER`, `KINO_CAPTION_FONT`, `KINO_CLAUDE_MODEL` (see
   `src/settings.mjs`).
+- `GET /healthz` answers without the access code (and says nothing but
+  `{"ok":true}`), for the platform's health check; the image has a Docker
+  `HEALTHCHECK` on it.
 
 The image has ffmpeg and a Chinese caption font, so instant camera moves and ad
 renders work out of the box.
@@ -173,7 +181,7 @@ browser: vanilla JS, no build step ──REST + server-sent events── server.
   `/cancel` with runpod/worker-comfyui's input and output format.
 
 ```
-Dockerfile   the studio as a container, for running it on a server
+Dockerfile   the studio as a container, for running it on a server (ghcr.io/jamesliuzx/kino)
 apps/        app catalogue and template sources
 brands/      brand profiles and product photos for the Ad Studio
 comfy/       ComfyUI 0.41 node registry
@@ -182,6 +190,7 @@ runpod/      Serverless worker, model paths, model downloader, setup guide
 scripts/     registry extractor and workflow builder
 src/         server, queue, providers, media, ads
 test/        node:test suites and fake ComfyUI / RunPod servers
+web/         the web demo: this interface on an in-browser engine
 workflows/   API-format workflows built from the official templates
 ```
 
@@ -191,12 +200,14 @@ workflows/   API-format workflows built from the official templates
 npm test
 ```
 
-39 tests: every shipped workflow validates against ComfyUI 0.41's node
+42 tests: every shipped workflow validates against ComfyUI 0.41's node
 definitions and stays valid once an app fills it in; the ComfyUI and RunPod
 providers run against fake servers that implement their protocols (uploads,
 WebSocket progress, cancellation, errors); compliance rules; caption wrapping
-and safe zones; and end-to-end runs through the HTTP API, including a full ad
-render with ffmpeg.
+and safe zones; end-to-end runs through the HTTP API, including a full ad
+render with ffmpeg; and the web demo's build, with its models and runtime
+(skipped until `npm run build:web-models` has made the models). GitHub
+Actions runs them on every change to `kino/`.
 
 ## Updating to a newer ComfyUI
 

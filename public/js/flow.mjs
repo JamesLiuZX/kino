@@ -5,7 +5,7 @@
 // as the Studio, so switching to Advanced keeps your work.
 
 import { h, icon, api, upload, toast, fail, store, aspectGlyph, fmtSeconds, replace } from "./ui.mjs"
-import { state, on, appById, cameraById, styleById, isDemo, isWeb, fullStudioUrl, watched, viewState } from "./state.mjs"
+import { state, on, appById, cameraById, styleById, isDemo, isWeb, webLocal, fullStudioUrl, watched, viewState } from "./state.mjs"
 import { cameraThumb, openCameraSheet, STYLE_SWATCH } from "./pickers.mjs"
 import { openLightbox, ring, download } from "./media.mjs"
 import { openRecorder } from "./recorder.mjs"
@@ -537,7 +537,8 @@ export function mountFlow(root, taskId) {
     const need = missing()
     const count = task.count?.(v) ?? 1
     const busy = run && !run.done
-    const time = app ? (app.gpu === 0 ? "Free · runs here" : `${count > 1 ? `${count} × ` : ""}~${fmtSeconds(app.seconds)}`) : ""
+    const local = webLocal(app?.id)
+    const time = app ? (app.gpu === 0 || local ? "Free · runs here" : `${count > 1 ? `${count} × ` : ""}~${fmtSeconds(app.seconds)}`) : ""
     replace(
       ctaEl,
       h(
@@ -551,9 +552,9 @@ export function mountFlow(root, taskId) {
         "p.cta-note",
         {},
         isWeb()
-          ? app?.gpu
+          ? app?.gpu && !local
             ? [icon("info"), "Web demo: a stand-in made in your browser. ", h("a.link", { href: fullStudioUrl(), target: "_blank", rel: "noopener" }, "Get the full studio")]
-            : [icon("check"), "Runs in your browser, for real"]
+            : [icon("check"), `Runs in your browser, for real${local?.note ? `. ${local.note}` : ""}`]
           : isDemo()
           ? [icon("info"), "Demo mode: a placeholder is made on this computer. ", h("a.link", { href: "#/settings" }, "Connect a GPU")]
           : app?.gpu

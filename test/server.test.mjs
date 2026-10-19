@@ -170,6 +170,7 @@ test("an access code protects the API and files", async () => {
     assert.equal((await s.call("/api/bootstrap", { headers: { Authorization: "Bearer open-sesame" } })).status, 200)
     assert.equal((await fetch(`${s.base}/files/anything.png`)).status, 401)
     assert.equal((await fetch(`${s.base}/`)).status, 200, "the app shell itself loads, to show the login")
+    assert.deepEqual(await (await fetch(`${s.base}/healthz`)).json(), { ok: true }, "health checks need no code and learn nothing")
   } finally {
     await s.close()
   }

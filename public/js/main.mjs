@@ -107,7 +107,7 @@ function renderStatus() {
   const kind = p.error ? "bad" : p.id === "mock" ? "warn" : "ok"
   const text = isWeb() ? "Web demo" : p.id === "mock" ? "Demo mode" : p.id === "runpod" ? "RunPod" : "ComfyUI"
   replace(statusEl, h(`span.dot.${kind}${kind === "ok" ? ".live" : ""}`), h("span.status-text", {}, text))
-  statusEl.title = isWeb() ? "Web demo: everything runs in your browser. The AI models need the full studio." : p.id === "mock" ? "Demo mode: placeholder results made on this computer. Connect a GPU in Settings." : p.label
+  statusEl.title = isWeb() ? "Web demo: everything runs in your browser. Cut-outs and upscaling run real models here; the others need the full studio." : p.id === "mock" ? "Demo mode: placeholder results made on this computer. Connect a GPU in Settings." : p.label
 }
 
 /** Switch mode and carry what you were doing across. */

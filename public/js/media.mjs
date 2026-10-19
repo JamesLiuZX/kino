@@ -266,7 +266,7 @@ export function openLightbox(id, list = [id]) {
     const app = appById(asset.appId)
     const v = asset.values ?? {}
     const facts = [
-      app ? ["Model", app.model] : asset.model ? ["Model", asset.model] : null,
+      asset.model || app ? ["Model", asset.model ?? app.model] : null,
       asset.width ? ["Size", `${asset.width} × ${asset.height}`] : null,
       asset.duration ? ["Length", fmtSeconds(asset.duration)] : null,
       v.aspect ? ["Aspect", v.aspect] : null,
@@ -281,6 +281,7 @@ export function openLightbox(id, list = [id]) {
     replace(
       side,
       h("div.lb-head", {}, h("span.pill", {}, app?.label ?? (asset.source === "upload" ? "Upload" : asset.source === "ad" ? "Ad" : asset.kind)), asset.demo ? h("span.pill.warn", {}, "Demo result") : null),
+      asset.note ? h("p.muted.small", {}, asset.note) : null,
       asset.prompt
         ? h("div.lb-prompt", {}, h("p", {}, asset.prompt), h("button.chip.small.ghost", { onclick: () => copyText(asset.prompt, "Prompt copied") }, icon("copy"), "Copy prompt"))
         : asset.name

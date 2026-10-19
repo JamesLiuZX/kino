@@ -3,7 +3,7 @@
 // everything else out of the way. Results stream into the feed above it.
 
 import { h, icon, api, upload, toast, fail, popover, closePopover, store, aspectGlyph, fmtSeconds, replace } from "./ui.mjs"
-import { state, on, appById, appsForTool, toolById, cameraById, styleById, audioById, aspectById, isDemo, isWeb, fullStudioUrl, viewState } from "./state.mjs"
+import { state, on, appById, appsForTool, toolById, cameraById, styleById, audioById, aspectById, isDemo, isWeb, webLocal, fullStudioUrl, viewState } from "./state.mjs"
 import { assetCard, jobCard, masonry } from "./media.mjs"
 import { openRecorder } from "./recorder.mjs"
 import { openCameraSheet, cameraThumb, aspectPicker, stylePicker, audioPicker, durationPicker, selectPicker, STYLE_SWATCH, AUDIO_ICON } from "./pickers.mjs"
@@ -152,7 +152,7 @@ export function mountCreate(root) {
             {},
             icon("info"),
             isWeb()
-              ? h("span", {}, h("strong", {}, "Web demo. "), "Everything runs in your browser: camera moves and ad edits are real, AI results are stand-ins. The models run in the full studio on a GPU.")
+              ? h("span", {}, h("strong", {}, "Web demo. "), "Everything runs in your browser. Camera moves, cut-outs, photo upscaling and ad edits are real; the other AI results are stand-ins, because those models need the full studio and a GPU.")
               : h("span", {}, h("strong", {}, "Demo mode. "), "Results are placeholders made on this computer, so you can try every tool. Connect a GPU (RunPod or your own ComfyUI) to use the real models."),
             isWeb() ? h("a.btn.small", { href: fullStudioUrl(), target: "_blank", rel: "noopener" }, "Get Kino") : h("a.btn.small", { href: "#/settings" }, "Connect a GPU"),
             h("button.icon-btn.ghost.small", { type: "button", "aria-label": "Dismiss", onclick: () => (store.set("demo-banner-dismissed", true), renderBanner()) }, icon("x")),
@@ -217,7 +217,7 @@ export function mountCreate(root) {
             `button.generate${ready ? "" : ".dim"}`,
             { type: "submit", title: "Generate (Ctrl/⌘ + Enter)" },
             h("span.gen-label", {}, icon("sparkles"), "Generate"),
-            h("span.gen-meta", {}, app.gpu === 0 ? "Free · instant" : `${count > 1 ? `${count} × ` : ""}~${fmtSeconds(app.seconds)}`),
+            h("span.gen-meta", {}, app.gpu === 0 ? "Free · instant" : webLocal(app.id) ? "Free · in your browser" : `${count > 1 ? `${count} × ` : ""}~${fmtSeconds(app.seconds)}`),
           ),
         ),
       ),

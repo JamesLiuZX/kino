@@ -39,6 +39,8 @@ export const isDemo = () => state.boot?.provider.id === "mock"
 /** The web demo: the interface running on an in-browser engine (kino/web). */
 export const isWeb = () => !!state.boot?.provider.web
 export const fullStudioUrl = () => state.boot?.web?.repo ?? "https://github.com/JamesLiuZX/james-portfolio/tree/main/kino"
+/** In the web demo, the apps that run for real on this device (camera moves, cut-outs, upscaling). */
+export const webLocal = (appId) => (isWeb() ? state.boot?.web?.local?.[appId] ?? null : null)
 
 /** Ask the Create view to load an app with values (Remix, Animate, Edit…). */
 export function compose(request) {
