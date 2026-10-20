@@ -9,7 +9,8 @@
 // you make. Files are the same open weights Kino's ComfyUI apps use (or the
 // GGUF quantisations stable-diffusion.cpp's docs point to), downloaded once
 // into the engine folder and shared between packs by name. `gb` sizes are
-// approximate and only for the Settings page; downloads report real sizes.
+// as the Engine workflow's link check measured them (October 2026), for the
+// Settings page until the real sizes are fetched.
 // `node scripts/check-engine-files.mjs` checks every URL still answers.
 
 export const ENGINE_REPO = "leejet/stable-diffusion.cpp"
@@ -37,9 +38,9 @@ export const PACKS = [
     memoryGb: 12,
     apps: ["image-fast"],
     files: {
-      diffusion: { name: "z_image_turbo-Q4_K.gguf", gb: 2.5, url: `${HF}/leejet/Z-Image-Turbo-GGUF/resolve/main/z_image_turbo-Q4_K.gguf` },
-      llm: { name: "Qwen3-4B-Instruct-2507-UD-Q4_K_XL.gguf", gb: 2.5, url: `${HF}/unsloth/Qwen3-4B-Instruct-2507-GGUF/resolve/main/Qwen3-4B-Instruct-2507-UD-Q4_K_XL.gguf` },
-      vae: { name: "ae.safetensors", gb: 0.33, url: `${HF}/Comfy-Org/z_image_turbo/resolve/main/split_files/vae/ae.safetensors` },
+      diffusion: { name: "z_image_turbo-Q4_K.gguf", gb: 3.86, url: `${HF}/leejet/Z-Image-Turbo-GGUF/resolve/main/z_image_turbo-Q4_K.gguf` },
+      llm: { name: "Qwen3-4B-Instruct-2507-UD-Q4_K_XL.gguf", gb: 2.55, url: `${HF}/unsloth/Qwen3-4B-Instruct-2507-GGUF/resolve/main/Qwen3-4B-Instruct-2507-UD-Q4_K_XL.gguf` },
+      vae: { name: "ae.safetensors", gb: 0.34, url: `${HF}/Comfy-Org/z_image_turbo/resolve/main/split_files/vae/ae.safetensors` },
     },
     server: (f) => ["--diffusion-model", f.diffusion, "--llm", f.llm, "--vae", f.vae, "--offload-to-cpu"],
   },
@@ -51,9 +52,9 @@ export const PACKS = [
     memoryGb: 32,
     apps: ["image-pro", "edit", "cutout"],
     files: {
-      diffusion: { name: "qwen_image_2.1_turbo_int8_convrot.safetensors", url: `${HF}/Comfy-Org/Qwen-Image-2.1/resolve/main/diffusion_models/qwen_image_2.1_turbo_int8_convrot.safetensors` },
-      llm: { name: "qwen3vl_8b_int8_convrot.safetensors", url: `${HF}/Comfy-Org/Qwen-Image-2.1/resolve/main/text_encoders/qwen3vl_8b_int8_convrot.safetensors` },
-      vae: { name: "qwen_image_2.1_vae_bf16.safetensors", url: `${HF}/Comfy-Org/Qwen-Image-2.1/resolve/main/vae/qwen_image_2.1_vae_bf16.safetensors` },
+      diffusion: { name: "qwen_image_2.1_turbo_int8_convrot.safetensors", gb: 7.26, url: `${HF}/Comfy-Org/Qwen-Image-2.1/resolve/main/diffusion_models/qwen_image_2.1_turbo_int8_convrot.safetensors` },
+      llm: { name: "qwen3vl_8b_int8_convrot.safetensors", gb: 9.35, url: `${HF}/Comfy-Org/Qwen-Image-2.1/resolve/main/text_encoders/qwen3vl_8b_int8_convrot.safetensors` },
+      vae: { name: "qwen_image_2.1_vae_bf16.safetensors", gb: 0.68, url: `${HF}/Comfy-Org/Qwen-Image-2.1/resolve/main/vae/qwen_image_2.1_vae_bf16.safetensors` },
     },
     server: (f) => ["--diffusion-model", f.diffusion, "--llm", f.llm, "--vae", f.vae, "--offload-to-cpu"],
   },
@@ -65,9 +66,9 @@ export const PACKS = [
     memoryGb: 24,
     apps: ["video-draft"],
     files: {
-      diffusion: { name: "wan2.2_ti2v_5B_fp16.safetensors", gb: 10, url: `${HF}/Comfy-Org/Wan_2.2_ComfyUI_Repackaged/resolve/main/split_files/diffusion_models/wan2.2_ti2v_5B_fp16.safetensors` },
-      t5xxl: { name: "umt5-xxl-encoder-Q8_0.gguf", gb: 6.2, url: `${HF}/city96/umt5-xxl-encoder-gguf/resolve/main/umt5-xxl-encoder-Q8_0.gguf` },
-      vae: { name: "wan2.2_vae.safetensors", gb: 1.4, url: `${HF}/Comfy-Org/Wan_2.2_ComfyUI_Repackaged/resolve/main/split_files/vae/wan2.2_vae.safetensors` },
+      diffusion: { name: "wan2.2_ti2v_5B_fp16.safetensors", gb: 10.0, url: `${HF}/Comfy-Org/Wan_2.2_ComfyUI_Repackaged/resolve/main/split_files/diffusion_models/wan2.2_ti2v_5B_fp16.safetensors` },
+      t5xxl: { name: "umt5-xxl-encoder-Q8_0.gguf", gb: 6.04, url: `${HF}/city96/umt5-xxl-encoder-gguf/resolve/main/umt5-xxl-encoder-Q8_0.gguf` },
+      vae: { name: "wan2.2_vae.safetensors", gb: 1.41, url: `${HF}/Comfy-Org/Wan_2.2_ComfyUI_Repackaged/resolve/main/split_files/vae/wan2.2_vae.safetensors` },
     },
     server: (f) => ["--diffusion-model", f.diffusion, "--t5xxl", f.t5xxl, "--vae", f.vae, "--offload-to-cpu"],
   },
@@ -89,10 +90,16 @@ export const PACKS = [
 // ffmpeg for machines that don't have it (camera moves, the ad editor, MP4s):
 // static builds with libass, libx264 and libvpx, fetched by the person's own
 // Kino from their publishers, never bundled. Linux has it a package away.
+// Each platform lists candidate sources in order (each one the zips that hold
+// ffmpeg and ffprobe); Kino keeps the first that downloads and actually runs,
+// so a publisher moving a build only costs a fallback. Apple Silicon falls
+// back to the Intel build, which runs under Rosetta.
+const RIEDL = "https://ffmpeg.martin-riedl.de/redirect/latest/macos"
+const riedl = (arch, channel) => [`${RIEDL}/${arch}/${channel}/ffmpeg.zip`, `${RIEDL}/${arch}/${channel}/ffprobe.zip`]
 export const FFMPEG_SOURCES = {
-  "darwin-arm64": ["https://ffmpeg.martin-riedl.de/redirect/latest/macos/arm64/release/ffmpeg.zip", "https://ffmpeg.martin-riedl.de/redirect/latest/macos/arm64/release/ffprobe.zip"],
-  "darwin-x64": ["https://ffmpeg.martin-riedl.de/redirect/latest/macos/amd64/release/ffmpeg.zip", "https://ffmpeg.martin-riedl.de/redirect/latest/macos/amd64/release/ffprobe.zip"],
-  "win32-x64": ["https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-win64-gpl.zip"],
+  "darwin-arm64": [riedl("arm64", "release"), riedl("arm64", "snapshot"), riedl("amd64", "release")],
+  "darwin-x64": [riedl("amd64", "release"), riedl("amd64", "snapshot")],
+  "win32-x64": [["https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-win64-gpl.zip"]],
 }
 
 /** Apps "This computer" runs with ffmpeg alone, no pack. */

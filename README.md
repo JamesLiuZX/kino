@@ -37,9 +37,9 @@ don't have it), then you download the model packs you want, once:
 
 | Pack | Model | Makes | Download | Memory |
 |---|---|---|---|---|
-| Fast images | Z-Image-Turbo (GGUF) | Image · Fast | about 5 GB | 12 GB+ |
-| Pro images, edits and cut-outs | Qwen Image 2.1 Turbo | Image · Pro, Edit, Cut out | large | 32 GB+ |
-| Video drafts | Wan 2.2 5B | Video · Draft | about 18 GB | 24 GB+ |
+| Fast images | Z-Image-Turbo (GGUF) | Image · Fast | about 7 GB | 12 GB+ |
+| Pro images, edits and cut-outs | Qwen Image 2.1 Turbo | Image · Pro, Edit, Cut out | about 17 GB | 32 GB+ |
+| Video drafts | Wan 2.2 5B | Video · Draft | about 17 GB | 24 GB+ |
 | Upscaling | Real-ESRGAN x4 | Upscale image | 67 MB | 4 GB+ |
 
 Smooth motion uses ffmpeg's motion-compensated interpolation, and instant

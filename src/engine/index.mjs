@@ -26,11 +26,12 @@ const GB = 1024 ** 3
 export class Engine extends EventEmitter {
   /**
    * settings: the studio's Settings (engineBinary, engineBuild, engineRelease,
-   * engineIdleMinutes). apiBase and metalUrl are overridable for tests.
+   * engineIdleMinutes). apiBase, metalUrl and ffmpegSources are overridable
+   * for tests.
    */
-  constructor({ dir, settings, platform = process.platform, arch = process.arch, apiBase = "https://api.github.com", metalUrl = METAL_BUILD_URL }) {
+  constructor({ dir, settings, platform = process.platform, arch = process.arch, apiBase = "https://api.github.com", metalUrl = METAL_BUILD_URL, ffmpegSources = FFMPEG_SOURCES }) {
     super()
-    Object.assign(this, { dir, settings, platform, arch, apiBase, metalUrl })
+    Object.assign(this, { dir, settings, platform, arch, apiBase, metalUrl, ffmpegSources })
     this.binDir = join(dir, "bin")
     this.modelsDir = join(dir, "models")
     this.toolsDir = join(dir, "tools")
@@ -130,29 +131,37 @@ export class Engine extends EventEmitter {
 
   /** ffmpeg and ffprobe from a static build, when this machine has neither. Not fatal. */
   async installFfmpeg(task, work) {
-    const urls = FFMPEG_SOURCES[`${this.platform}-${this.arch}`]
-    if (!urls) return
+    const candidates = this.ffmpegSources[`${this.platform}-${this.arch}`]
+    if (!candidates) return
     const { signal } = task.controller
-    try {
-      const unpacked = join(work, "ffmpeg")
-      for (const [i, url] of urls.entries()) {
-        task.phase = "Downloading ffmpeg"
-        task.received = task.total = 0
-        const zip = join(work, `ffmpeg-${i}.zip`)
-        await download(url, zip, { signal, onProgress: (p) => this.progress(task, p) })
-        await unzip(zip, unpacked)
+    const problems = []
+    for (const [n, urls] of candidates.entries()) {
+      try {
+        const unpacked = join(work, `ffmpeg-${n}`)
+        for (const [i, url] of urls.entries()) {
+          task.phase = "Downloading ffmpeg"
+          task.received = task.total = 0
+          const zip = join(work, `ffmpeg-${n}-${i}.zip`)
+          await download(url, zip, { signal, onProgress: (p) => this.progress(task, p) })
+          await unzip(zip, unpacked)
+        }
+        await mkdir(this.toolsDir, { recursive: true })
+        for (const tool of ["ffmpeg", "ffprobe"]) {
+          const found = findFile(unpacked, binaryName(tool, this.platform))
+          if (found) await rename(found, join(this.toolsDir, binaryName(tool, this.platform)))
+        }
+        // Keep it only if it runs here (an Intel build needs Rosetta).
+        if (this.useTools() && (await hasFfmpeg())) {
+          delete this.state.ffmpegError
+          return this.saveState()
+        }
+        problems.push(`${fileName(urls[0])} didn't run on this computer`)
+      } catch (e) {
+        if (signal.aborted) throw e
+        problems.push(e.message)
       }
-      await mkdir(this.toolsDir, { recursive: true })
-      for (const tool of ["ffmpeg", "ffprobe"]) {
-        const found = findFile(unpacked, binaryName(tool, this.platform))
-        if (found) await rename(found, join(this.toolsDir, binaryName(tool, this.platform)))
-      }
-      if (!this.useTools()) throw new Error("the download had no ffmpeg in it")
-      delete this.state.ffmpegError
-    } catch (e) {
-      if (signal.aborted) throw e
-      this.state.ffmpegError = `Couldn't fetch ffmpeg (${e.message}). Install it yourself to turn on camera moves and the ad editor.`
     }
+    this.state.ffmpegError = `Couldn't fetch ffmpeg (${problems.join("; ")}). Install it yourself to turn on camera moves and the ad editor.`
     await this.saveState()
   }
 

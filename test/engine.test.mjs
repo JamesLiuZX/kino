@@ -19,7 +19,7 @@ import { Settings } from "../src/settings.mjs"
 import { Jobs } from "../src/jobs.mjs"
 import { appById } from "../apps/catalog.mjs"
 import { resolveValues } from "../src/apps.mjs"
-import { hasFfmpeg } from "../src/media/ffmpeg.mjs"
+import { hasFfmpeg, recheckFfmpeg } from "../src/media/ffmpeg.mjs"
 import { proceduralImage } from "../src/media/png.mjs"
 import { makeZip } from "./helpers/zip.mjs"
 
@@ -199,6 +199,45 @@ test("engine install: finds the newest release with this machine's build, unpack
     assert.equal(statSync(engine.binaryPath("sd-server")).mode & 0o111, 0o111, "still executable")
     assert.equal(JSON.parse(readFileSync(join(engine.dir, "engine.json"), "utf8")).release, "master-899-bbbbbbb")
   } finally {
+    server.close()
+  }
+})
+
+test("ffmpeg install: skips a missing build and one that won't run, keeps the first that does", { skip: process.platform === "win32" }, async () => {
+  const script = (code) => `#!/bin/sh\necho "ffmpeg version fake"\nexit ${code}\n`
+  const zips = {
+    "/broken.zip": makeZip([{ name: "bin/ffmpeg", data: script(1), mode: 0o755 }, { name: "bin/ffprobe", data: script(1), mode: 0o755 }]),
+    "/good-ffmpeg.zip": makeZip([{ name: "ffmpeg", data: script(0), mode: 0o755 }]),
+    "/good-ffprobe.zip": makeZip([{ name: "ffprobe", data: script(0), mode: 0o755 }]),
+  }
+  const server = createServer((req, res) => {
+    const zip = zips[req.url]
+    res.writeHead(zip ? 200 : 404, zip ? { "Content-Length": zip.length } : {})
+    res.end(zip)
+  })
+  const base = await listen(server)
+  const path = process.env.PATH
+  try {
+    const engine = new Engine({
+      dir: tmp(),
+      settings: { get: () => undefined },
+      platform: process.platform,
+      arch: process.arch,
+      ffmpegSources: { [`${process.platform}-${process.arch}`]: [[`${base}/gone.zip`], [`${base}/broken.zip`], [`${base}/good-ffmpeg.zip`, `${base}/good-ffprobe.zip`]] },
+    })
+    const work = tmp()
+    await engine.installFfmpeg({ controller: new AbortController() }, work)
+    assert.equal(engine.state.ffmpegError, undefined)
+    assert.equal(readFileSync(join(engine.toolsDir, "ffmpeg"), "utf8"), script(0))
+    assert.ok(existsSync(join(engine.toolsDir, "ffprobe")))
+    assert.equal(process.env.PATH.split(":")[0], engine.toolsDir, "Kino's ffmpeg comes first on the PATH")
+
+    const none = new Engine({ dir: tmp(), settings: { get: () => undefined }, ffmpegSources: { [`${process.platform}-${process.arch}`]: [[`${base}/gone.zip`]] } })
+    await none.installFfmpeg({ controller: new AbortController() }, tmp())
+    assert.match(none.state.ffmpegError, /Couldn't fetch ffmpeg .*404.*Install it yourself/)
+  } finally {
+    process.env.PATH = path
+    recheckFfmpeg()
     server.close()
   }
 })

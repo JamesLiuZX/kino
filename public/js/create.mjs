@@ -162,7 +162,7 @@ export function mountCreate(root) {
               "div.banner",
               {},
               icon("info"),
-              h("span", {}, h("strong", {}, "Set up this computer. "), "Install the engine and a model pack in Settings (Fast images is about 5 GB, once) to make pictures right here, with no account and no key."),
+              h("span", {}, h("strong", {}, "Set up this computer. "), "Install the engine and a model pack in Settings (Fast images is about 7 GB, once) to make pictures right here, with no account and no key."),
               h("a.btn.small", { href: "#/settings" }, "Set up"),
             )
           : null,

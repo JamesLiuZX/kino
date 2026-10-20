@@ -51,7 +51,7 @@ Principles, in order:
 
 - **A first-run guide** that looks at the machine (memory, Apple Silicon or
   graphics card) and recommends packs: "Your Mac can make pictures in about 10
-  seconds. Download Fast images (5 GB)?", then makes a first picture from a
+  seconds. Download Fast images (7 GB)?", then makes a first picture from a
   sample product photo, so people see a result in minutes.
 - **Live previews while it works.** sd-server already sends a preview frame
   with each step; show it on the stage instead of only a progress ring.
