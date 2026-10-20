@@ -86,6 +86,15 @@ export const PACKS = [
   },
 ]
 
+// ffmpeg for machines that don't have it (camera moves, the ad editor, MP4s):
+// static builds with libass, libx264 and libvpx, fetched by the person's own
+// Kino from their publishers, never bundled. Linux has it a package away.
+export const FFMPEG_SOURCES = {
+  "darwin-arm64": ["https://ffmpeg.martin-riedl.de/redirect/latest/macos/arm64/release/ffmpeg.zip", "https://ffmpeg.martin-riedl.de/redirect/latest/macos/arm64/release/ffprobe.zip"],
+  "darwin-x64": ["https://ffmpeg.martin-riedl.de/redirect/latest/macos/amd64/release/ffmpeg.zip", "https://ffmpeg.martin-riedl.de/redirect/latest/macos/amd64/release/ffprobe.zip"],
+  "win32-x64": ["https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-win64-gpl.zip"],
+}
+
 /** Apps "This computer" runs with ffmpeg alone, no pack. */
 export const FFMPEG_APPS = new Set(["smooth"])
 

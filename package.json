@@ -1,8 +1,9 @@
 {
   "name": "kino",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
-  "description": "A one-box AI image and video studio on ComfyUI and RunPod, with an Ad Studio for TikTok and Meta.",
+  "description": "An AI image and video studio that runs on your own computer, a GPU server or RunPod, with an Ad Studio for TikTok and Meta.",
+  "author": "James Liu (https://github.com/JamesLiuZX)",
   "homepage": "https://github.com/JamesLiuZX/kino",
   "repository": {
     "type": "git",
@@ -10,6 +11,7 @@
   },
   "bugs": "https://github.com/JamesLiuZX/kino/issues",
   "type": "module",
+  "main": "desktop/main.mjs",
   "engines": {
     "node": ">=22"
   },
@@ -20,12 +22,17 @@
     "build:workflows": "node scripts/build-workflows.mjs",
     "build:nodes": "python3 scripts/core-nodes.py",
     "build:web": "node web/build.mjs",
-    "build:web-models": "python3 scripts/web-models.py"
+    "build:web-models": "python3 scripts/web-models.py",
+    "desktop": "electron .",
+    "dist": "electron-builder --config desktop/electron-builder.yml",
+    "check:engine-files": "node scripts/check-engine-files.mjs"
   },
   "optionalDependencies": {
     "@anthropic-ai/sdk": "0.131.0"
   },
   "devDependencies": {
+    "electron": "44.5.1",
+    "electron-builder": "26.15.3",
     "onnxruntime-web": "1.30.0"
   }
 }

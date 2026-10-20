@@ -4,10 +4,14 @@
 //   node scripts/check-engine-files.mjs          exit 1 if any model file is gone
 //   node scripts/check-engine-files.mjs --json   sizes as JSON, for updating catalog.mjs
 
-import { METAL_BUILD_URL, PACKS, packFiles } from "../src/engine/catalog.mjs"
+import { FFMPEG_SOURCES, METAL_BUILD_URL, PACKS, packFiles } from "../src/engine/catalog.mjs"
+import { fileName } from "../src/engine/download.mjs"
 
 const json = process.argv.includes("--json")
-const files = PACKS.flatMap((p) => packFiles(p).map((f) => ({ pack: p.id, ...f })))
+const files = [
+  ...PACKS.flatMap((p) => packFiles(p).map((f) => ({ pack: p.id, ...f }))),
+  ...Object.entries(FFMPEG_SOURCES).flatMap(([platform, urls]) => urls.map((url) => ({ pack: `ffmpeg ${platform}`, name: fileName(url), url }))),
+]
 
 async function head(url) {
   for (let attempt = 0; attempt < 3; attempt++) {
@@ -31,7 +35,7 @@ if (json) {
     const ok = r.status === 200
     const size = r.bytes ? `${(r.bytes / 1e9).toFixed(2)} GB` : "?"
     const drift = ok && r.gb && r.bytes && Math.abs(r.bytes / 1e9 - r.gb) / r.gb > 0.15 ? `  (catalog says ~${r.gb} GB)` : ""
-    console.log(`${ok ? "ok  " : "GONE"}  ${r.pack.padEnd(12)} ${r.name.padEnd(52)} ${ok ? size : r.status || r.error}${drift}`)
+    console.log(`${ok ? "ok  " : "GONE"}  ${r.pack.padEnd(19)} ${r.name.padEnd(52)} ${ok ? size : r.status || r.error}${drift}`)
   }
   console.log(`${metal.status === 200 ? "ok  " : "note"}  Metal build for Apple Silicon: ${metal.status === 200 ? "published" : "not published yet (run the Engine workflow)"}`)
 }

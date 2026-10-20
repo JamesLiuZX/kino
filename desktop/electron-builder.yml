@@ -1,0 +1,74 @@
+# Installers for the desktop app: `npm run dist` builds for the machine you're
+# on; .github/workflows/desktop.yml builds all three on a version tag and
+# attaches them to the GitHub release. The app is the studio as it is in the
+# repository (no bundler): the server, the interface and the catalogues. The
+# engine and models are not in the installer; Kino fetches them on first use.
+
+appId: com.jamesliuzx.kino
+productName: Kino
+copyright: Copyright © 2026 James Liu
+artifactName: Kino-${version}-${os}-${arch}.${ext}
+
+directories:
+  output: dist-desktop
+  buildResources: desktop
+
+files:
+  - package.json
+  - server.mjs
+  - desktop/main.mjs
+  - desktop/preload.cjs
+  - src/**
+  - public/**
+  - apps/**
+  - workflows/**
+  - comfy/**
+  - brands/**
+  - runpod/models.json
+  - "!**/*.map"
+
+extraMetadata:
+  main: desktop/main.mjs
+
+mac:
+  category: public.app-category.graphics-design
+  icon: desktop/icon.png
+  hardenedRuntime: true
+  entitlements: desktop/entitlements.mac.plist
+  entitlementsInherit: desktop/entitlements.mac.plist
+  extendInfo:
+    NSMicrophoneUsageDescription: Kino records your voice for talking photos and ad voice-overs.
+  target:
+    - target: dmg
+      arch: [arm64, x64]
+
+dmg:
+  title: Kino ${version}
+
+win:
+  icon: desktop/icon.png
+  target:
+    - target: nsis
+      arch: [x64]
+
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  deleteAppDataOnUninstall: false
+
+linux:
+  icon: desktop/icon.png
+  category: Graphics
+  synopsis: An AI image and video studio that runs on your own computer
+  maintainer: James Liu <JamesLiuZX@users.noreply.github.com>
+  target:
+    - target: AppImage
+      arch: [x64]
+    - target: deb
+      arch: [x64]
+
+deb:
+  depends: [ffmpeg]
+
+publish: null

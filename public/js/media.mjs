@@ -299,6 +299,8 @@ export function openLightbox(id, list = [id]) {
           "div.row",
           {},
           h("button.btn.grow", { onclick: () => download(asset) }, icon("download"), "Download"),
+          // The desktop app can show the file itself, where Kino keeps it.
+          window.kinoDesktop ? h("button.icon-btn", { "aria-label": "Show in folder", title: "Show in folder", onclick: () => window.kinoDesktop.reveal(asset.file) }, icon("box")) : null,
           h("button.icon-btn", { "aria-label": asset.favorite ? "Unfavourite" : "Favourite", onclick: () => toggleFavorite(asset).then(render) }, icon(asset.favorite ? "heart-fill" : "heart")),
           h("button.icon-btn.danger", { "aria-label": "Delete", onclick: async () => (await removeAsset(asset)) && (list.splice(index, 1), list.length ? render() : close()) }, icon("trash")),
         ),

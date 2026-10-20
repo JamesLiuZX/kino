@@ -3,11 +3,12 @@
 //   PORT=7860  HOST=127.0.0.1  KINO_DATA=./data  KINO_TOKEN=<access code when exposed>
 
 import { resolve } from "node:path"
+import { fileURLToPath } from "node:url"
 import { createServer } from "./src/server.mjs"
 
 const port = Number(process.env.PORT || 7860)
 const host = process.env.HOST || "127.0.0.1"
-const dataDir = resolve(process.env.KINO_DATA || new URL("./data", import.meta.url).pathname)
+const dataDir = resolve(process.env.KINO_DATA || fileURLToPath(new URL("./data", import.meta.url)))
 
 if (host !== "127.0.0.1" && host !== "localhost" && !process.env.KINO_TOKEN) {
   console.warn("[kino] Listening beyond this machine without KINO_TOKEN: anyone who can reach it can use your GPU and keys.")

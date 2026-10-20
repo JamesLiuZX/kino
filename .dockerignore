@@ -5,3 +5,5 @@ test
 .DS_Store
 runpod
 web
+dist-desktop
+desktop

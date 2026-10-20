@@ -28,6 +28,9 @@ export function run(cmd, args, { timeoutMs = 10 * 60_000, onStdout, signal } = {
 }
 
 let available
+/** Forget the answer, e.g. after Kino fetched ffmpeg itself. */
+export const recheckFfmpeg = () => (available = undefined)
+
 export async function hasFfmpeg() {
   if (available === undefined) {
     available = await run("ffmpeg", ["-hide_banner", "-version"], { timeoutMs: 10_000 }).then(

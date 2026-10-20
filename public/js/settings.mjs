@@ -154,7 +154,13 @@ export function mountSettings(root) {
         {},
         h("h2", {}, "Ads and captions"),
         h("div.fields", {}, field("captionFont", "Chinese caption font", { help: "Any font installed on this machine. WenQuanYi Zen Hei and Noto Sans CJK SC both work." })),
-        h("p.muted.small", {}, state.boot.ffmpeg ? "ffmpeg found: instant camera moves and ad editing are on." : "ffmpeg isn't installed: install it to enable instant camera moves and the Ad Studio's editor."),
+        h(
+          "p.muted.small",
+          {},
+          state.boot.ffmpeg
+            ? "ffmpeg found: instant camera moves and ad editing are on."
+            : "ffmpeg isn't installed, so instant camera moves and the Ad Studio's editor are off. Installing This computer's engine fetches it on Mac and Windows; or install it yourself (brew install ffmpeg, winget install ffmpeg, sudo apt install ffmpeg) and restart Kino.",
+        ),
       ),
       h("p.muted.small.center", {}, `Kino ${state.boot.version} · your files stay on this machine, in the data folder next to the app.`),
     )
@@ -257,6 +263,7 @@ export function mountSettings(root) {
       ),
       busy ? progress(task) : null,
       task?.error ? h("small.engine-error", {}, task.error) : null,
+      st.ffmpegError ? h("small.engine-error", {}, st.ffmpegError) : null,
       h("p.muted.small", {}, `This computer has ${st.memoryGb} GB of memory${st.freeGb !== null ? ` and ${st.freeGb} GB free disk` : ""}. Model packs download once and stay in ${st.dir}.`),
       h("div.packs", {}, ...st.packs.map((p) => packCard(p, st))),
     )

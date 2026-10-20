@@ -6,6 +6,7 @@ import { createServer as createHttpServer } from "node:http"
 import { timingSafeEqual } from "node:crypto"
 import { readFileSync } from "node:fs"
 import { join } from "node:path"
+import { fileURLToPath } from "node:url"
 import { Store } from "./store.mjs"
 import { Settings } from "./settings.mjs"
 import { Apps, catalogue } from "./apps.mjs"
@@ -21,7 +22,7 @@ import { renderMotion } from "./media/motion.mjs"
 import { hasFfmpeg } from "./media/ffmpeg.mjs"
 import { HttpError, Router, parseCookies, readBody, readJson, send, serveFile } from "./http.mjs"
 
-const ROOT = new URL("..", import.meta.url).pathname
+const ROOT = fileURLToPath(new URL("..", import.meta.url))
 const PUBLIC = join(ROOT, "public")
 const VERSION = "0.1.0"
 

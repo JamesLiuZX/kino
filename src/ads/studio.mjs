@@ -5,6 +5,7 @@
 
 import { existsSync, readdirSync, readFileSync } from "node:fs"
 import { join } from "node:path"
+import { fileURLToPath } from "node:url"
 import { newId } from "../store.mjs"
 import { checkBrief } from "./compliance.mjs"
 import { platformById } from "./platforms.mjs"
@@ -18,7 +19,7 @@ export const ENGINES = {
   draft: { label: "Draft · silent", blurb: "Wan 2.2 on a 24 GB GPU: real motion, no sound, cheaper than Pro." },
 }
 
-const ROOT = new URL("../..", import.meta.url).pathname
+const ROOT = fileURLToPath(new URL("../..", import.meta.url))
 const BRAND_FIELDS = new Set(["name", "product", "audience", "voice", "colors", "offer", "cta", "claims", "story", "moments", "banned", "rules"])
 
 export class AdStudio {

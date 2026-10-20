@@ -2,7 +2,7 @@
 // and the live event stream.
 
 import { h, icon, api, toast, replace } from "./ui.mjs"
-import { state, on, emit, mode, setMode, viewState, isWeb, providerName } from "./state.mjs"
+import { state, on, emit, mode, setMode, viewState, isWeb, needsSetup, providerName } from "./state.mjs"
 import { mountCreate } from "./create.mjs"
 import { mountLibrary } from "./library.mjs"
 import { mountAds } from "./ads.mjs"
@@ -104,10 +104,16 @@ function renderChrome() {
 function renderStatus() {
   if (!statusEl) return
   const p = state.boot.provider
-  const kind = p.error ? "bad" : p.id === "mock" ? "warn" : "ok"
+  const kind = p.error ? "bad" : p.id === "mock" || needsSetup() ? "warn" : "ok"
   const text = isWeb() ? "Web demo" : providerName(p)
   replace(statusEl, h(`span.dot.${kind}${kind === "ok" ? ".live" : ""}`), h("span.status-text", {}, text))
-  statusEl.title = isWeb() ? "Web demo: everything runs in your browser. Cut-outs and upscaling run real models here; the others need the full studio." : p.id === "mock" ? "Demo mode: placeholder results made on this computer. Connect a GPU in Settings." : p.label
+  statusEl.title = isWeb()
+    ? "Web demo: everything runs in your browser. Cut-outs and upscaling run real models here; the others need the full studio."
+    : p.id === "mock"
+      ? "Demo mode: placeholder results made on this computer. Connect a GPU in Settings."
+      : needsSetup()
+        ? "This computer: install the engine and a model pack in Settings."
+        : p.label
 }
 
 /** Switch mode and carry what you were doing across. */
@@ -238,6 +244,7 @@ function connect() {
 }
 
 on("boot", renderStatus)
+on("engine", renderStatus)
 
 function login() {
   const input = h("input.input", { type: "password", placeholder: "Access code", "aria-label": "Access code", autocomplete: "current-password" })

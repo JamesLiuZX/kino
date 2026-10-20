@@ -13,12 +13,13 @@
 
 import { readFileSync, writeFileSync, mkdirSync } from "node:fs"
 import { join } from "node:path"
+import { fileURLToPath } from "node:url"
 import { uiToApi } from "../src/comfy/ui2api.mjs"
 import { validatePrompt } from "../src/comfy/validate.mjs"
 import { SOURCES, TEMPLATES_VERSION } from "../apps/sources.mjs"
 import { APPS } from "../apps/catalog.mjs"
 
-const root = new URL("..", import.meta.url).pathname
+const root = fileURLToPath(new URL("..", import.meta.url))
 const [dir, flag, which] = process.argv.slice(2)
 if (!dir) {
   console.error("usage: build-workflows.mjs <templates dir> [--describe <template>]")

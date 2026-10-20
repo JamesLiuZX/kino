@@ -4,3 +4,4 @@ data/
 .DS_Store
 web/models/
 web/dist/
+dist-desktop/

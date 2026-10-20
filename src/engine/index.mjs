@@ -4,6 +4,7 @@
 // <data>/engine unless KINO_ENGINE_DIR says otherwise:
 //   bin/      sd-server, sd-cli and their libraries
 //   models/   model files, by name, shared between packs
+//   tools/    ffmpeg and ffprobe, if this machine had none and Kino fetched them
 //   tmp/      downloads in progress
 //   engine.json  which build is installed, and file sizes learnt from the network
 
@@ -14,7 +15,8 @@ import { mkdir, rename, rm, writeFile } from "node:fs/promises"
 import { totalmem } from "node:os"
 import { delimiter, dirname, join, relative } from "node:path"
 import { CanceledError } from "../providers/common.mjs"
-import { ENGINE_REPO, METAL_BUILD_URL, PACKS, binaryName, packById, packFiles, pickAssets } from "./catalog.mjs"
+import { hasFfmpeg, recheckFfmpeg } from "../media/ffmpeg.mjs"
+import { ENGINE_REPO, FFMPEG_SOURCES, METAL_BUILD_URL, PACKS, binaryName, packById, packFiles, pickAssets } from "./catalog.mjs"
 import { download, fileName, remoteSize } from "./download.mjs"
 import { SdServer } from "./sdserver.mjs"
 import { unzip } from "./unzip.mjs"
@@ -31,6 +33,7 @@ export class Engine extends EventEmitter {
     Object.assign(this, { dir, settings, platform, arch, apiBase, metalUrl })
     this.binDir = join(dir, "bin")
     this.modelsDir = join(dir, "models")
+    this.toolsDir = join(dir, "tools")
     this.tmpDir = join(dir, "tmp")
     this.stateFile = join(dir, "engine.json")
     this.state = readState(this.stateFile)
@@ -38,6 +41,16 @@ export class Engine extends EventEmitter {
     this.current = null // the running SdServer
     this.idleTimer = null
     this.lastEmit = 0
+    this.useTools()
+  }
+
+  /** ffmpeg that Kino fetched goes on the PATH, so every part of the studio finds it. */
+  useTools() {
+    if (!existsSync(join(this.toolsDir, binaryName("ffmpeg", this.platform)))) return false
+    const parts = (process.env.PATH ?? "").split(delimiter)
+    if (!parts.includes(this.toolsDir)) process.env.PATH = [this.toolsDir, ...parts].filter(Boolean).join(delimiter)
+    recheckFfmpeg()
+    return true
   }
 
   setting(key, fallback) {
@@ -109,9 +122,38 @@ export class Engine extends EventEmitter {
       await rename(unpacked, this.binDir)
       this.state = { ...this.state, root: relative(unpacked, dirname(found)) || "", release: zips[0].release, build: zips[0].build, assets: zips.map((z) => z.name), installedAt: Date.now() }
       await this.saveState()
+      if (!(await hasFfmpeg())) await this.installFfmpeg(task, work)
     } finally {
       await rm(work, { recursive: true, force: true }).catch(() => {})
     }
+  }
+
+  /** ffmpeg and ffprobe from a static build, when this machine has neither. Not fatal. */
+  async installFfmpeg(task, work) {
+    const urls = FFMPEG_SOURCES[`${this.platform}-${this.arch}`]
+    if (!urls) return
+    const { signal } = task.controller
+    try {
+      const unpacked = join(work, "ffmpeg")
+      for (const [i, url] of urls.entries()) {
+        task.phase = "Downloading ffmpeg"
+        task.received = task.total = 0
+        const zip = join(work, `ffmpeg-${i}.zip`)
+        await download(url, zip, { signal, onProgress: (p) => this.progress(task, p) })
+        await unzip(zip, unpacked)
+      }
+      await mkdir(this.toolsDir, { recursive: true })
+      for (const tool of ["ffmpeg", "ffprobe"]) {
+        const found = findFile(unpacked, binaryName(tool, this.platform))
+        if (found) await rename(found, join(this.toolsDir, binaryName(tool, this.platform)))
+      }
+      if (!this.useTools()) throw new Error("the download had no ffmpeg in it")
+      delete this.state.ffmpegError
+    } catch (e) {
+      if (signal.aborted) throw e
+      this.state.ffmpegError = `Couldn't fetch ffmpeg (${e.message}). Install it yourself to turn on camera moves and the ad editor.`
+    }
+    await this.saveState()
   }
 
   /** The zip(s) to fetch: Kino's Metal build on Apple Silicon, else upstream's release for this machine. */
@@ -329,6 +371,7 @@ export class Engine extends EventEmitter {
     }
     return {
       installed: this.installed(),
+      ffmpegError: this.state.ffmpegError ?? null,
       custom: !!String(this.setting("engineBinary", "") || "").trim(),
       release: this.state.release ?? null,
       build: this.state.build ?? null,

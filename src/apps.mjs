@@ -4,6 +4,7 @@
 
 import { readFileSync, readdirSync } from "node:fs"
 import { join } from "node:path"
+import { fileURLToPath } from "node:url"
 import { APPS, TOOLS } from "../apps/catalog.mjs"
 import { ASPECTS, AUDIO, CAMERA, STYLES, aspectById } from "./presets.mjs"
 import { checkBindings } from "./comfy/graph.mjs"
@@ -11,7 +12,7 @@ import { uiToApi, registryFromObjectInfo } from "./comfy/ui2api.mjs"
 import { validatePrompt } from "./comfy/validate.mjs"
 import { newId } from "./store.mjs"
 
-const ROOT = new URL("..", import.meta.url).pathname
+const ROOT = fileURLToPath(new URL("..", import.meta.url))
 const FILE_TYPES = new Set(["image", "audio", "video"])
 const MAX_SEED = 2 ** 32
 
