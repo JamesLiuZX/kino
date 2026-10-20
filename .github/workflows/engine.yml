@@ -1,0 +1,89 @@
+name: Engine
+
+# "This computer" depends on things Kino doesn't host itself, so this checks
+# them and builds the one piece upstream doesn't publish:
+#   files  every model and ffmpeg download URL still answers (weekly, and when
+#          the catalogue changes), so a moved file is found before a user is
+#   metal  stable-diffusion.cpp built with Metal for Apple Silicon (upstream's
+#          macOS zip is CPU only), published as the release asset Kino's engine
+#          installer looks for: releases/download/engine-metal/sd-bin-macos-arm64-metal.zip
+
+on:
+  schedule:
+    - cron: "17 3 * * 1"
+  push:
+    branches: ["main"]
+    paths: ["src/engine/catalog.mjs", ".github/workflows/engine.yml"]
+  pull_request:
+    paths: ["src/engine/catalog.mjs", ".github/workflows/engine.yml"]
+  workflow_dispatch:
+    inputs:
+      build_metal:
+        description: Build and publish the Metal engine for Apple Silicon
+        type: boolean
+        default: true
+      sdcpp_ref:
+        description: stable-diffusion.cpp commit, tag or branch to build
+        default: master
+
+permissions:
+  contents: read
+
+jobs:
+  files:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: node scripts/check-engine-files.mjs
+
+  metal:
+    if: github.event_name == 'workflow_dispatch' && inputs.build_metal
+    runs-on: macos-14
+    permissions:
+      contents: write
+    steps:
+      - name: Get stable-diffusion.cpp
+        env:
+          REF: ${{ inputs.sdcpp_ref }}
+        run: |
+          git clone --recursive https://github.com/leejet/stable-diffusion.cpp sdcpp
+          cd sdcpp
+          git checkout "$REF"
+          git submodule update --init --recursive
+          echo "SDCPP_SHA=$(git rev-parse --short HEAD)" >> "$GITHUB_ENV"
+
+      - name: Build with Metal
+        working-directory: sdcpp
+        run: |
+          cmake -B build -DCMAKE_BUILD_TYPE=Release -DSD_METAL=ON -DSD_BUILD_SHARED_LIBS=ON \
+            -DSD_SERVER_BUILD_FRONTEND=OFF -DCMAKE_OSX_ARCHITECTURES=arm64
+          cmake --build build --config Release -j "$(sysctl -n hw.ncpu)"
+
+      # The server must start and answer on this exact build before it ships.
+      - name: Check it starts
+        working-directory: sdcpp/build/bin
+        run: |
+          ./sd-cli --version || ./sd-cli --help | head -5
+          ./sd-server --help | head -5
+
+      - name: Pack
+        run: |
+          cp sdcpp/LICENSE sdcpp/build/bin/stable-diffusion.cpp.txt
+          cp sdcpp/ggml/LICENSE sdcpp/build/bin/ggml.txt
+          echo "stable-diffusion.cpp ${SDCPP_SHA} with Metal, built by github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}" > sdcpp/build/bin/BUILD.txt
+          (cd sdcpp/build/bin && zip -y -r "$GITHUB_WORKSPACE/sd-bin-macos-arm64-metal.zip" .)
+
+      - name: Publish as the engine-metal release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view engine-metal --repo "${{ github.repository }}" >/dev/null 2>&1 || \
+            gh release create engine-metal --repo "${{ github.repository }}" --prerelease \
+              --title "Engine for Apple Silicon (Metal)" \
+              --notes "stable-diffusion.cpp built with Metal, fetched by Kino's engine installer on Apple Silicon Macs. Rebuilt by the Engine workflow."
+          gh release upload engine-metal sd-bin-macos-arm64-metal.zip --clobber --repo "${{ github.repository }}"
+          gh release edit engine-metal --repo "${{ github.repository }}" \
+            --notes "stable-diffusion.cpp ${SDCPP_SHA} built with Metal, fetched by Kino's engine installer on Apple Silicon Macs. Rebuilt by the Engine workflow."
