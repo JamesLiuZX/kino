@@ -3,7 +3,7 @@
 // results to pick up from.
 
 import { h, icon, replace } from "./ui.mjs"
-import { state, on, cameraById, isDemo, isWeb, setMode } from "./state.mjs"
+import { state, on, cameraById, isDemo, isWeb, needsSetup, setMode } from "./state.mjs"
 import { cameraThumb } from "./pickers.mjs"
 import { openLightbox, actionsFor } from "./media.mjs"
 import { wordsFor } from "./flow.mjs"
@@ -21,7 +21,7 @@ export function mountHome(root) {
 
   function renderHero() {
     const p = state.boot.provider
-    const status = isWeb() ? "Web demo · runs in your browser, nothing to install" : p.id === "mock" ? "Demo mode · try anything, nothing to set up" : `Connected · ${p.id === "runpod" ? "RunPod" : "ComfyUI"}`
+    const status = isWeb() ? "Web demo · runs in your browser, nothing to install" : p.id === "mock" ? "Demo mode · try anything, nothing to set up" : p.id === "local" ? (needsSetup() ? "This computer · finish setting up in Settings" : "Running on this computer") : `Connected · ${p.id === "runpod" ? "RunPod" : "ComfyUI"}`
     replace(
       hero,
       h(
@@ -36,7 +36,7 @@ export function mountHome(root) {
       h(
         "div.hero-inner",
         {},
-        h("p.eyebrow.rise", { style: { "--d": "0s" } }, h(`span.dot.${p.id === "mock" ? "warn" : "ok"}.live`), status),
+        h("p.eyebrow.rise", { style: { "--d": "0s" } }, h(`span.dot.${p.id === "mock" || needsSetup() ? "warn" : "ok"}.live`), status),
         h("h1.display", {}, wordsFor(["What will you", "make"], { delay: 0.05 }), h("span.word", {}, h("span", { style: { "--d": "0.32s" } }, " today?"))),
         h("p.lede.rise", { style: { "--d": "0.35s" } }, "Pick a task. Kino chooses the model, writes the prompt and does the editing. ", h("strong", {}, "You choose the photo, the moment and the look.")),
       ),

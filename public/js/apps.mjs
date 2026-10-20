@@ -2,7 +2,7 @@
 // and importing your own ComfyUI workflows as one-box apps.
 
 import { h, icon, api, toast, fail, confirmDialog, fmtSeconds, copyText, replace } from "./ui.mjs"
-import { state, on, toolById, isWeb, fullStudioUrl } from "./state.mjs"
+import { state, on, toolById, isWeb, fullStudioUrl, needsSetup } from "./state.mjs"
 
 export function mountApps(root) {
   let models = null
@@ -26,8 +26,11 @@ export function mountApps(root) {
 
   function readiness(appId) {
     const s = state.status?.apps?.[appId]
-    if (!state.status || state.boot.provider.id !== "comfy") return null
-    return s ? (s.ready ? { ok: true, text: "Models installed" } : { ok: false, text: `Missing ${s.missing.length} model file${s.missing.length > 1 ? "s" : ""}`, missing: s.missing }) : null
+    const local = state.boot.provider.id === "local"
+    if (!state.status || !s || (!local && state.boot.provider.id !== "comfy")) return null
+    if (s.ready) return { ok: true, text: local ? "Ready on this computer" : "Models installed" }
+    if (s.reason) return { ok: false, text: s.reason[0].toUpperCase() + s.reason.slice(1), missing: s.missing }
+    return { ok: false, text: `Missing ${s.missing.length} model file${s.missing.length > 1 ? "s" : ""}`, missing: s.missing }
   }
 
   function renderStatus() {
@@ -37,7 +40,7 @@ export function mountApps(root) {
       statusEl,
       h(`span.dot.${p.id === "mock" ? "warn" : s?.ok === false ? "bad" : "ok"}`),
       h("span", {}, s?.label ?? p.label),
-      isWeb() ? h("a.link", { href: fullStudioUrl(), target: "_blank", rel: "noopener" }, "Get the full studio") : h("a.link", { href: "#/settings" }, p.id === "mock" ? "Connect a GPU" : "Change"),
+      isWeb() ? h("a.link", { href: fullStudioUrl(), target: "_blank", rel: "noopener" }, "Get the full studio") : h("a.link", { href: "#/settings" }, p.id === "mock" ? "Connect a GPU" : needsSetup() ? "Finish setting up" : "Change"),
     )
   }
 

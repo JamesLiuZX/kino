@@ -3,7 +3,7 @@
 // everything else out of the way. Results stream into the feed above it.
 
 import { h, icon, api, upload, toast, fail, popover, closePopover, store, aspectGlyph, fmtSeconds, replace } from "./ui.mjs"
-import { state, on, appById, appsForTool, toolById, cameraById, styleById, audioById, aspectById, isDemo, isWeb, webLocal, fullStudioUrl, viewState } from "./state.mjs"
+import { state, on, appById, appsForTool, toolById, cameraById, styleById, audioById, aspectById, isDemo, isWeb, needsSetup, webLocal, fullStudioUrl, viewState } from "./state.mjs"
 import { assetCard, jobCard, masonry } from "./media.mjs"
 import { openRecorder } from "./recorder.mjs"
 import { openCameraSheet, cameraThumb, aspectPicker, stylePicker, audioPicker, durationPicker, selectPicker, STYLE_SWATCH, AUDIO_ICON } from "./pickers.mjs"
@@ -157,7 +157,15 @@ export function mountCreate(root) {
             isWeb() ? h("a.btn.small", { href: fullStudioUrl(), target: "_blank", rel: "noopener" }, "Get Kino") : h("a.btn.small", { href: "#/settings" }, "Connect a GPU"),
             h("button.icon-btn.ghost.small", { type: "button", "aria-label": "Dismiss", onclick: () => (store.set("demo-banner-dismissed", true), renderBanner()) }, icon("x")),
           )
-        : null,
+        : needsSetup()
+          ? h(
+              "div.banner",
+              {},
+              icon("info"),
+              h("span", {}, h("strong", {}, "Set up this computer. "), "Install the engine and a model pack in Settings (Fast images is about 5 GB, once) to make pictures right here, with no account and no key."),
+              h("a.btn.small", { href: "#/settings" }, "Set up"),
+            )
+          : null,
     )
   }
 

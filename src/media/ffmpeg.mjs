@@ -44,10 +44,12 @@ export async function probe(file) {
   const video = info.streams.find((s) => s.codec_type === "video")
   const audio = info.streams.find((s) => s.codec_type === "audio")
   const duration = Number(info.format?.duration ?? video?.duration ?? 0)
+  const [num, den] = String(video?.avg_frame_rate ?? video?.r_frame_rate ?? "0/1").split("/").map(Number)
   return {
     width: video?.width ?? 0,
     height: video?.height ?? 0,
     duration: Number.isFinite(duration) ? duration : 0,
+    fps: num && den ? num / den : 0,
     hasAudio: !!audio,
     codec: video?.codec_name ?? audio?.codec_name ?? "",
   }

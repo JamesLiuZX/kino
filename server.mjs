@@ -26,9 +26,11 @@ server.listen(port, host, () => {
 })
 
 for (const sig of ["SIGINT", "SIGTERM"]) {
-  process.on(sig, () => {
+  process.on(sig, async () => {
     server.close()
     ctx.store.flush()
+    // Stop this computer's engine too, or its server outlives the studio.
+    await Promise.race([ctx.engine.close(), new Promise((r) => setTimeout(r, 6000))])
     process.exit(0)
   })
 }

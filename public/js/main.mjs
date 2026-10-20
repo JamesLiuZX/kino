@@ -2,7 +2,7 @@
 // and the live event stream.
 
 import { h, icon, api, toast, replace } from "./ui.mjs"
-import { state, on, emit, mode, setMode, viewState, isWeb } from "./state.mjs"
+import { state, on, emit, mode, setMode, viewState, isWeb, providerName } from "./state.mjs"
 import { mountCreate } from "./create.mjs"
 import { mountLibrary } from "./library.mjs"
 import { mountAds } from "./ads.mjs"
@@ -105,7 +105,7 @@ function renderStatus() {
   if (!statusEl) return
   const p = state.boot.provider
   const kind = p.error ? "bad" : p.id === "mock" ? "warn" : "ok"
-  const text = isWeb() ? "Web demo" : p.id === "mock" ? "Demo mode" : p.id === "runpod" ? "RunPod" : "ComfyUI"
+  const text = isWeb() ? "Web demo" : providerName(p)
   replace(statusEl, h(`span.dot.${kind}${kind === "ok" ? ".live" : ""}`), h("span.status-text", {}, text))
   statusEl.title = isWeb() ? "Web demo: everything runs in your browser. Cut-outs and upscaling run real models here; the others need the full studio." : p.id === "mock" ? "Demo mode: placeholder results made on this computer. Connect a GPU in Settings." : p.label
 }
@@ -217,6 +217,7 @@ function connect() {
   relay("asset-removed", ({ id }) => state.assets.delete(id))
   relay("ad", (a) => state.ads.set(a.id, a))
   relay("ad-removed", ({ id }) => state.ads.delete(id))
+  relay("engine", (st) => (state.engine = st))
   es.addEventListener("apps", async () => {
     state.boot = await api("/api/bootstrap")
     emit("boot", state.boot)

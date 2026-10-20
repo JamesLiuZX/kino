@@ -36,6 +36,10 @@ export const styleById = (id) => state.boot?.presets.styles.find((s) => s.id ===
 export const audioById = (id) => state.boot?.presets.audio.find((a) => a.id === id)
 
 export const isDemo = () => state.boot?.provider.id === "mock"
+/** Where models run, in a word or two: Demo mode, This computer, RunPod, ComfyUI. */
+export const providerName = (p = state.boot?.provider) => ({ mock: "Demo mode", local: "This computer", runpod: "RunPod", comfy: "ComfyUI" })[p?.id] ?? "ComfyUI"
+/** "This computer" is chosen but has no engine or no model pack yet. */
+export const needsSetup = () => state.boot?.provider.id === "local" && !(state.engine ?? state.boot?.engine)?.packs?.some((p) => p.ready && (state.engine ?? state.boot.engine).installed)
 /** The web demo: the interface running on an in-browser engine (kino/web). */
 export const isWeb = () => !!state.boot?.provider.web
 export const fullStudioUrl = () => state.boot?.web?.repo ?? "https://github.com/JamesLiuZX/kino"

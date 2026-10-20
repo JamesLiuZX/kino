@@ -12,6 +12,7 @@ import { Apps, catalogue } from "./apps.mjs"
 import { Library, assetView } from "./library.mjs"
 import { Jobs } from "./jobs.mjs"
 import { providerFor } from "./providers/index.mjs"
+import { Engine } from "./engine/index.mjs"
 import { claudeStatus, enhancePrompt } from "./llm.mjs"
 import { AdStudio, ENGINES } from "./ads/studio.mjs"
 import { PLATFORMS } from "./ads/platforms.mjs"
@@ -24,14 +25,20 @@ const ROOT = new URL("..", import.meta.url).pathname
 const PUBLIC = join(ROOT, "public")
 const VERSION = "0.1.0"
 
-export function createStudio({ dataDir, env = process.env, providerOverride } = {}) {
+/**
+ * settingsDefaults overrides built-in defaults (the desktop app starts on
+ * "local"); the engine folder is <dataDir>/engine unless KINO_ENGINE_DIR or
+ * engineDir say otherwise.
+ */
+export function createStudio({ dataDir, env = process.env, providerOverride, settingsDefaults, engineDir, engineOptions = {} } = {}) {
   const events = new EventEmitter()
   events.setMaxListeners(100)
   const store = new Store(dataDir)
-  const settings = new Settings(dataDir, env)
+  const settings = new Settings(dataDir, env, { defaults: settingsDefaults })
   const apps = new Apps({ store })
   const library = new Library({ store, dir: dataDir, events })
-  const pick = providerOverride ? () => providerOverride : providerFor
+  const engine = new Engine({ dir: engineDir ?? env.KINO_ENGINE_DIR ?? join(dataDir, "engine"), settings, ...engineOptions })
+  const pick = providerOverride ? () => providerOverride : (s) => providerFor(s, { engine })
   let studio
   const jobs = new Jobs({
     store,
@@ -56,12 +63,12 @@ export function createStudio({ dataDir, env = process.env, providerOverride } = 
   jobs.start()
   // Brand photos go into the library up front, so the Ad Studio can show them.
   for (const b of studio.brands()) studio.brandAssets(b).catch((e) => console.error("[kino] brand assets:", e.message))
-  return { events, store, settings, apps, library, jobs, studio, provider: () => pick(settings) }
+  return { events, store, settings, apps, library, jobs, studio, engine, provider: () => pick(settings) }
 }
 
-export function createServer({ dataDir, env = process.env, providerOverride } = {}) {
-  const ctx = createStudio({ dataDir, env, providerOverride })
-  const { events, store, settings, apps, library, jobs, studio } = ctx
+export function createServer({ dataDir, env = process.env, ...options } = {}) {
+  const ctx = createStudio({ dataDir, env, ...options })
+  const { events, store, settings, apps, library, jobs, studio, engine } = ctx
   const token = env.KINO_TOKEN || ""
   const maxUpload = Number(env.KINO_MAX_UPLOAD_MB || 300) * 1024 * 1024
   const r = new Router()
@@ -76,6 +83,7 @@ export function createServer({ dataDir, env = process.env, providerOverride } = 
       provider: { id: provider.id, label: provider.label, error: provider.error },
       claude: await claudeStatus(settings),
       ffmpeg: await hasFfmpeg(),
+      engine: engine.status(),
       ads: { platforms: Object.values(PLATFORMS), engines: ENGINES, angles: ANGLES, brands: studio.brands().map(brandView) },
     }
   })
@@ -148,6 +156,21 @@ export function createServer({ dataDir, env = process.env, providerOverride } = 
     } catch (e) {
       throw new HttpError(400, e.message)
     }
+  })
+
+  // ------------------------------------------------------------ this computer
+  r.on("GET", "/api/engine", () => {
+    engine.refreshSizes()
+    return engine.status()
+  })
+  r.on("POST", "/api/engine/install", async ({ req }) => wrap400(async () => engine.install(await readJson(req))))
+  r.on("POST", "/api/engine/packs/:id/download", ({ params }) => wrap400(async () => engine.downloadPack(params.id)))
+  r.on("POST", "/api/engine/packs/:id/cancel", ({ params }) => engine.cancel(params.id))
+  r.on("DELETE", "/api/engine/packs/:id", ({ params }) => wrap400(() => engine.removePack(params.id)))
+  r.on("POST", "/api/engine/install/cancel", () => engine.cancel("install"))
+  r.on("POST", "/api/engine/stop", async () => {
+    await engine.stopServer()
+    return engine.status()
   })
 
   // ------------------------------------------------------------ writing help
@@ -227,6 +250,7 @@ export function createServer({ dataDir, env = process.env, providerOverride } = 
   events.on("ad-removed", (a) => broadcast("ad-removed", a))
   events.on("settings", (s) => broadcast("settings", s))
   events.on("apps", () => broadcast("apps", catalogue(apps)))
+  engine.on("change", (st) => broadcast("engine", st))
   const heartbeat = setInterval(() => {
     for (const c of clients) c.write(": ping\n\n")
   }, 25_000)
@@ -279,6 +303,7 @@ export function createServer({ dataDir, env = process.env, providerOverride } = 
     clearInterval(heartbeat)
     for (const c of clients) c.end()
     store.flush()
+    engine.close().catch(() => {})
   })
   return { server, ctx }
 }
