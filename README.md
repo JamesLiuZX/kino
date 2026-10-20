@@ -1,20 +1,54 @@
 # Kino
 
 An AI image and video studio with a one-box interface. Type a line, pick a
-camera move, press Generate. Underneath, Kino runs the official ComfyUI
-workflows for 2026's best open models on your own GPU or on RunPod. Its Ad
-Studio turns a brand profile into finished, captioned TikTok and Meta ads that
-have been checked against health-ad rules.
+camera move, press Generate. Kino runs 2026's best open models **on your own
+computer** (no account, no key), on your own GPU server through ComfyUI, or on
+RunPod. Its Ad Studio turns a brand profile into finished, captioned TikTok and
+Meta ads that have been checked against health-ad rules.
+
+## Get it
+
+**Desktop app** for Mac (Apple Silicon and Intel), Windows and Linux: download
+it from [Releases](https://github.com/JamesLiuZX/kino/releases). On first run,
+**Settings → This computer** installs the engine and the model packs you pick.
+Until the builds are signed, macOS blocks the first open: click Done, then
+System Settings → Privacy & Security → Open Anyway. Windows shows SmartScreen:
+More info → Run anyway.
+
+**From source** (Node 22+; ffmpeg recommended):
 
 ```bash
 git clone https://github.com/JamesLiuZX/kino && cd kino
-node server.mjs          # Node 22+; ffmpeg recommended
-# open http://localhost:7860
+node server.mjs          # the studio in your browser at http://localhost:7860
+npm install && npm run desktop   # or as the desktop app
 ```
 
-It starts in **demo mode**: every tool works and produces real files
+From source it starts in **demo mode**: every tool works and produces real files
 (placeholder renders, real camera moves, real ad edits), so you can try the
-whole studio before connecting a GPU. Connect one in **Settings**.
+whole studio before choosing where models run. Change it in **Settings**.
+
+## This computer
+
+Kino runs the models itself with [stable-diffusion.cpp](https://github.com/leejet/stable-diffusion.cpp):
+one small program with Metal on Apple Silicon, Vulkan or CUDA on PCs and a CPU
+path everywhere. No Python, no CUDA toolkit, no account. Settings → This
+computer installs it for your machine (and ffmpeg on Mac and Windows if you
+don't have it), then you download the model packs you want, once:
+
+| Pack | Model | Makes | Download | Memory |
+|---|---|---|---|---|
+| Fast images | Z-Image-Turbo (GGUF) | Image · Fast | about 5 GB | 12 GB+ |
+| Pro images, edits and cut-outs | Qwen Image 2.1 Turbo | Image · Pro, Edit, Cut out | large | 32 GB+ |
+| Video drafts | Wan 2.2 5B | Video · Draft | about 18 GB | 24 GB+ |
+| Upscaling | Real-ESRGAN x4 | Upscale image | 67 MB | 4 GB+ |
+
+Smooth motion uses ffmpeg's motion-compensated interpolation, and instant
+camera moves and the Ad Studio's editor need only ffmpeg. MiniMax H3 (video with
+sound), LTX-2.3 (talking photos) and SeedVR2 (video upscaling) are too big for
+most personal computers; those apps say so and run on a GPU server. The engine
+keeps one pack loaded between jobs and frees the memory after ten idle minutes.
+Packs live in the data folder (`KINO_ENGINE_DIR` moves them); **Advanced** lets
+you use your own stable-diffusion.cpp build or pin a release.
 
 ## Try it in your browser
 
@@ -96,7 +130,7 @@ uses only claims copied word for word from herbalbathsg.com. Edit the offer,
 call to action, claims and banned words in the Ad Studio (saved on your
 machine).
 
-## Connect a GPU
+## Connect a GPU server
 
 - **A ComfyUI server** (a RunPod GPU pod, a cloud GPU, or your own PC running
   ComfyUI 0.41+): paste its address in Settings. Live step-by-step progress.
@@ -153,13 +187,18 @@ studio in-process in GitHub Actions and renders queued briefs (see
 ## How it works
 
 ```
-browser: vanilla JS, no build step ──REST + server-sent events── server.mjs (Node 22, no dependencies)
-                                                                   ├─ apps      catalogue of one-box apps → workflows/*.json
-                                                                   ├─ jobs      queue with lanes: local ffmpeg | GPU backend
-                                                                   ├─ providers demo | ComfyUI (HTTP + WebSocket) | RunPod Serverless
-                                                                   ├─ library   files + one JSON file (data/)
-                                                                   └─ ads       schema · compliance · writer · ffmpeg editor
+browser or desktop window: vanilla JS, no build step ──REST + server-sent events── server.mjs (Node 22, no dependencies)
+                                                                                      ├─ apps      catalogue of one-box apps → workflows/*.json
+                                                                                      ├─ jobs      queue with lanes: local ffmpeg | model backend
+                                                                                      ├─ providers demo | this computer | ComfyUI (HTTP + WebSocket) | RunPod Serverless
+                                                                                      ├─ engine    stable-diffusion.cpp: install, model packs, sd-server
+                                                                                      ├─ library   files + one JSON file (data/)
+                                                                                      └─ ads       schema · compliance · writer · ffmpeg editor
 ```
+
+The desktop app ([`desktop/`](desktop/)) is this same server running inside
+Electron on 127.0.0.1, behind an access code made at each launch, so the
+browser, Docker and desktop studios are one codebase.
 
 - **Workflows are generated, not hand-written.**
   [`scripts/core-nodes.py`](scripts/core-nodes.py) reads every core node
@@ -178,21 +217,31 @@ browser: vanilla JS, no build step ──REST + server-sent events── server.
 - **Providers speak each backend's real protocol**: ComfyUI's `/upload/image`,
   `/prompt` with a client-chosen `prompt_id`, WebSocket progress with
   `/history` polling as a fallback, `/interrupt`; RunPod's `/run`, `/status`,
-  `/cancel` with runpod/worker-comfyui's input and output format.
+  `/cancel` with runpod/worker-comfyui's input and output format;
+  stable-diffusion.cpp's native `/sdcpp/v1` jobs (submit, poll with step
+  previews, cancel) for This computer, with each app's request in
+  [`src/engine/catalog.mjs`](src/engine/catalog.mjs).
 
 ```
 Dockerfile   the studio as a container, for running it on a server (ghcr.io/jamesliuzx/kino)
 apps/        app catalogue and template sources
 brands/      brand profiles and product photos for the Ad Studio
 comfy/       ComfyUI 0.41 node registry
+desktop/     the desktop app: Electron shell, installer config, icon
+docs/        user flows, the Open Generative AI review, the roadmap
 public/      the studio UI (HTML, CSS, ES modules)
 runpod/      Serverless worker, model paths, model downloader, setup guide
-scripts/     registry extractor and workflow builder
-src/         server, queue, providers, media, ads
-test/        node:test suites and fake ComfyUI / RunPod servers
+scripts/     registry extractor, workflow builder, engine download check
+src/         server, queue, providers, engine, media, ads
+test/        node:test suites and fake ComfyUI, RunPod and sd-server
 web/         the web demo: this interface on an in-browser engine
 workflows/   API-format workflows built from the official templates
 ```
+
+Where Kino is going next (first-run guide, recipes and brand kits, projects,
+a posting calendar with Meta, webhooks and phone hand-off, signed builds) is in
+[docs/roadmap.md](docs/roadmap.md); what it took from Open Generative AI and why
+is in [docs/open-generative-ai.md](docs/open-generative-ai.md).
 
 ## Tests
 
@@ -200,10 +249,13 @@ workflows/   API-format workflows built from the official templates
 npm test
 ```
 
-42 tests: every shipped workflow validates against ComfyUI 0.41's node
+54 tests: every shipped workflow validates against ComfyUI 0.41's node
 definitions and stays valid once an app fills it in; the ComfyUI and RunPod
 providers run against fake servers that implement their protocols (uploads,
-WebSocket progress, cancellation, errors); compliance rules; caption wrapping
+WebSocket progress, cancellation, errors); This computer's engine (its zip
+reader, resumed downloads, choosing and installing a build) and provider,
+driving a fake sd-server through real jobs (steps, reuse, swapping packs,
+cancel, out-of-memory, video, upscaling); compliance rules; caption wrapping
 and safe zones; end-to-end runs through the HTTP API, including a full ad
 render with ffmpeg; and the web demo's build, with its models and runtime
 (skipped until `npm run build:web-models` has made the models). GitHub
@@ -221,10 +273,22 @@ npm test
 
 Then bump `COMFYUI_VERSION` in `runpod/Dockerfile`.
 
+## Desktop builds
+
+`npm run dist` builds installers for the machine you're on into
+`dist-desktop/`. [`.github/workflows/desktop.yml`](.github/workflows/desktop.yml)
+builds all of them on every packaging change, and on a version tag (`v0.2.0`,
+matching `package.json`) drafts a GitHub release with them attached. Add the
+signing secrets it lists to get signed, notarised builds.
+[`.github/workflows/engine.yml`](.github/workflows/engine.yml) builds
+stable-diffusion.cpp with Metal for Apple Silicon (run it once by hand) and
+checks every model download URL each week.
+
 ## Licences
 
 The workflows are derived from Comfy-Org's official workflow templates. Each
 model has its own licence, and some restrict commercial use: check the model
-pages linked in `runpod/models.json` before you run ads with them. The
-Serverless image builds on runpod/worker-comfyui (AGPL-3.0) without modifying
-its code.
+pages linked in `runpod/models.json` and `src/engine/catalog.mjs` before you
+run ads with them. The Serverless image builds on runpod/worker-comfyui
+(AGPL-3.0) without modifying its code. Other people's work Kino uses, adapts or
+fetches is listed in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
