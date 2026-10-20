@@ -92,12 +92,13 @@ export const PACKS = [
 // Kino from their publishers, never bundled. Linux has it a package away.
 // Each platform lists candidate sources in order (each one the zips that hold
 // ffmpeg and ffprobe); Kino keeps the first that downloads and actually runs,
-// so a publisher moving a build only costs a fallback. Apple Silicon falls
-// back to the Intel build, which runs under Rosetta.
+// so a publisher moving a build only costs a fallback (in October 2026 the
+// "release" links came and went between two checks; "snapshot" held). Apple
+// Silicon falls back to the Intel builds last, which run under Rosetta.
 const RIEDL = "https://ffmpeg.martin-riedl.de/redirect/latest/macos"
 const riedl = (arch, channel) => [`${RIEDL}/${arch}/${channel}/ffmpeg.zip`, `${RIEDL}/${arch}/${channel}/ffprobe.zip`]
 export const FFMPEG_SOURCES = {
-  "darwin-arm64": [riedl("arm64", "release"), riedl("arm64", "snapshot"), riedl("amd64", "release")],
+  "darwin-arm64": [riedl("arm64", "release"), riedl("arm64", "snapshot"), riedl("amd64", "release"), riedl("amd64", "snapshot")],
   "darwin-x64": [riedl("amd64", "release"), riedl("amd64", "snapshot")],
   "win32-x64": [["https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-win64-gpl.zip"]],
 }
