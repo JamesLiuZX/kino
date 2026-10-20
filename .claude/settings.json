@@ -1,0 +1,16 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/branch-check.sh",
+            "timeout": 30,
+            "statusMessage": "Checking for branches with unmerged work"
+          }
+        ]
+      }
+    ]
+  }
+}

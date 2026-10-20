@@ -38,4 +38,7 @@ as scratch space. The work has to end up on `main`.
    resumes it instead of restarting. That is the only reason a branch may
    outlive its session.
 5. **Delete the session branch after it lands** (`git push origin --delete
-   <branch>`), or list it for James if deletion is refused.
+   <branch>`). If deletion is refused, leave it: James runs the "Prune merged
+   branches" workflow (Actions tab), which deletes every branch whose commits
+   are all on the trunk. A SessionStart hook (`.claude/hooks/branch-check.sh`)
+   lists the other branches on origin at the start of each session.
