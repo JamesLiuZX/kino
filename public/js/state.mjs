@@ -38,7 +38,7 @@ export const audioById = (id) => state.boot?.presets.audio.find((a) => a.id === 
 export const isDemo = () => state.boot?.provider.id === "mock"
 /** The web demo: the interface running on an in-browser engine (kino/web). */
 export const isWeb = () => !!state.boot?.provider.web
-export const fullStudioUrl = () => state.boot?.web?.repo ?? "https://github.com/JamesLiuZX/james-portfolio/tree/main/kino"
+export const fullStudioUrl = () => state.boot?.web?.repo ?? "https://github.com/JamesLiuZX/kino"
 /** In the web demo, the apps that run for real on this device (camera moves, cut-outs, upscaling). */
 export const webLocal = (appId) => (isWeb() ? state.boot?.web?.local?.[appId] ?? null : null)
 

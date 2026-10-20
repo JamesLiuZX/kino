@@ -3,6 +3,12 @@
   "version": "0.1.0",
   "private": true,
   "description": "A one-box AI image and video studio on ComfyUI and RunPod, with an Ad Studio for TikTok and Meta.",
+  "homepage": "https://github.com/JamesLiuZX/kino",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/JamesLiuZX/kino.git"
+  },
+  "bugs": "https://github.com/JamesLiuZX/kino/issues",
   "type": "module",
   "engines": {
     "node": ">=22"

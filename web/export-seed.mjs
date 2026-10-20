@@ -11,7 +11,7 @@ import { fileURLToPath } from "node:url"
 
 const BASE = process.env.KINO_URL ?? "http://127.0.0.1:7861"
 const SEED = join(dirname(fileURLToPath(import.meta.url)), "seed")
-const REPO = "https://github.com/JamesLiuZX/james-portfolio/tree/main/kino"
+const REPO = "https://github.com/JamesLiuZX/kino"
 
 const get = async (path) => {
   const res = await fetch(BASE + path)

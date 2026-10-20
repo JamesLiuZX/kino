@@ -7,7 +7,7 @@ Studio turns a brand profile into finished, captioned TikTok and Meta ads that
 have been checked against health-ad rules.
 
 ```bash
-cd kino
+git clone https://github.com/JamesLiuZX/kino && cd kino
 node server.mjs          # Node 22+; ffmpeg recommended
 # open http://localhost:7860
 ```
@@ -115,10 +115,10 @@ with server-side refusal fallbacks enabled).
 
 To reach the studio from your phone or share it with a teammate, run it on any
 small server (a VPS, Fly.io, Railway or a RunPod CPU pod). It needs no GPU of
-its own; that's what the ComfyUI or RunPod connection is for. Every change to
-`kino/` on main publishes the image for Intel and ARM servers, after it has
-started, rendered a camera move and passed its health check
-([`.github/workflows/kino.yml`](../.github/workflows/kino.yml)):
+its own; that's what the ComfyUI or RunPod connection is for. Every change on
+main publishes the image for Intel and ARM servers, after it has started,
+rendered a camera move and passed its health check
+([`.github/workflows/ci.yml`](.github/workflows/ci.yml)):
 
 ```bash
 docker run -d --restart unless-stopped -p 7860:7860 \
@@ -146,8 +146,8 @@ Or build it yourself: `docker build -t kino .` in this folder.
 The image has ffmpeg and a Chinese caption font, so instant camera moves and ad
 renders work out of the box.
 
-HerbalBath's Autopilot also runs Kino without the UI: its media job checks out
-this folder in GitHub Actions and renders queued briefs (see
+HerbalBath's Autopilot also runs Kino without the UI: its media job loads the
+studio in-process in GitHub Actions and renders queued briefs (see
 `scripts/ops/render-media.mjs` in herbalbath-myrrh).
 
 ## How it works
@@ -207,7 +207,7 @@ WebSocket progress, cancellation, errors); compliance rules; caption wrapping
 and safe zones; end-to-end runs through the HTTP API, including a full ad
 render with ffmpeg; and the web demo's build, with its models and runtime
 (skipped until `npm run build:web-models` has made the models). GitHub
-Actions runs them on every change to `kino/`.
+Actions runs them on every push and pull request.
 
 ## Updating to a newer ComfyUI
 

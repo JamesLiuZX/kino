@@ -28,8 +28,8 @@ on the fly, which works but is slower.
 2. Open the pod's web terminal and fetch the models for the apps you want:
 
    ```bash
-   git clone --depth 1 https://github.com/JamesLiuZX/james-portfolio /tmp/kino-src
-   cd /tmp/kino-src/kino/runpod
+   git clone --depth 1 https://github.com/JamesLiuZX/kino /tmp/kino-src
+   cd /tmp/kino-src/runpod
    bash download-models.sh --dry-run image-fast video-pro edit   # sizes, free space
    bash download-models.sh image-fast video-pro edit
    ```
@@ -52,8 +52,8 @@ Stop the pod when you're done; the volume keeps the models for next time.
    `/workspace`), then in its terminal:
 
    ```bash
-   git clone --depth 1 https://github.com/JamesLiuZX/james-portfolio /tmp/kino-src
-   bash /tmp/kino-src/kino/runpod/download-models.sh image-fast video-pro edit cutout
+   git clone --depth 1 https://github.com/JamesLiuZX/kino /tmp/kino-src
+   bash /tmp/kino-src/runpod/download-models.sh image-fast video-pro edit cutout
    ```
 
    Files go to `/workspace/models/...`, which Serverless workers see as

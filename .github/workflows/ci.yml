@@ -1,0 +1,123 @@
+name: CI
+
+# Kino's tests on every push and pull request, and its studio image: built and
+# smoke-tested on pull requests, published to ghcr.io/jamesliuzx/kino from main.
+# (The desktop installers are built by desktop.yml.)
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: kino-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install ffmpeg and a Chinese caption font
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq ffmpeg fonts-wqy-zenhei > /dev/null
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - run: npm ci --no-audit --no-fund
+
+      # The web demo's in-browser models, made from their upstream releases.
+      - name: Restore the web demo's models
+        id: models
+        uses: actions/cache@v4
+        with:
+          path: web/models
+          key: kino-web-models-${{ hashFiles('scripts/web-models.py') }}
+
+      - if: steps.models.outputs.cache-hit != 'true'
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Make the web demo's models
+        if: steps.models.outputs.cache-hit != 'true'
+        run: |
+          pip install --quiet onnx onnxruntime numpy
+          python3 scripts/web-models.py web/models /tmp/kino-model-sources
+
+      - run: npm test
+
+  image:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Build for this runner
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          load: true
+          tags: kino:smoke
+          cache-from: type=gha,scope=kino
+          cache-to: type=gha,scope=kino,mode=max
+
+      # The image must start, keep its API behind the access code, have ffmpeg,
+      # and render a real camera move from the brand's photo.
+      - name: Smoke test
+        run: |
+          docker run -d --name kino -p 7860:7860 -e KINO_TOKEN=smoke --health-interval=2s kino:smoke
+          for i in $(seq 1 30); do curl -fsS http://localhost:7860/healthz > /dev/null && break; sleep 1; done
+          api() { curl -fsS -H "Authorization: Bearer smoke" -H "Content-Type: application/json" "$@"; }
+          test "$(curl -s -o /dev/null -w '%{http_code}' http://localhost:7860/api/bootstrap)" = 401
+          api http://localhost:7860/api/bootstrap | jq -e '.ffmpeg == true and .provider.id == "mock"' > /dev/null
+          photo=$(api "http://localhost:7860/api/assets?source=brand" | jq -r '[.[] | select(.kind == "image")][0].id')
+          job=$(api -X POST http://localhost:7860/api/generate -d "{\"app\":\"video-instant\",\"values\":{\"image\":\"$photo\",\"camera\":\"push-in\",\"duration\":2}}" | jq -r '.jobs[0].id')
+          for i in $(seq 1 60); do
+            status=$(api http://localhost:7860/api/jobs | jq -r ".[] | select(.id == \"$job\") | .status")
+            [ "$status" = done ] && break
+            [ "$status" = failed ] && break
+            sleep 1
+          done
+          echo "Camera move: $status"
+          test "$status" = done || { docker logs kino; exit 1; }
+          for i in $(seq 1 20); do [ "$(docker inspect -f '{{.State.Health.Status}}' kino)" = healthy ] && break; sleep 1; done
+          docker inspect -f 'Health: {{.State.Health.Status}}' kino
+          test "$(docker inspect -f '{{.State.Health.Status}}' kino)" = healthy
+
+      - name: Log in to GitHub Container Registry
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Publish for Intel and ARM servers
+        if: github.event_name != 'pull_request'
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: |
+            ghcr.io/jamesliuzx/kino:latest
+            ghcr.io/jamesliuzx/kino:${{ github.sha }}
+          labels: |
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.title=Kino
+            org.opencontainers.image.description=An AI image and video studio for small brands, on ComfyUI and RunPod.
+          cache-from: type=gha,scope=kino
+          cache-to: type=gha,scope=kino,mode=max
