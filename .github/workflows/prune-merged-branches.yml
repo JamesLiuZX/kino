@@ -1,0 +1,48 @@
+name: Prune merged branches
+
+# One trunk, no side branches (CLAUDE.md). This deletes every branch whose
+# commits are all already on the trunk, so deleting it loses nothing. Branches
+# that still hold work the trunk lacks are listed and kept.
+# Run by hand from the Actions tab; it never runs on its own.
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "List what would be deleted without deleting anything"
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+jobs:
+  prune:
+    runs-on: ubuntu-latest
+    env:
+      TRUNK: main
+      DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+      DRY_RUN: ${{ inputs.dry_run }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Delete branches already contained in the trunk
+        run: |
+          git fetch --prune origin '+refs/heads/*:refs/remotes/origin/*'
+          for ref in $(git for-each-ref --format='%(refname:lstrip=3)' refs/remotes/origin); do
+            case "$ref" in HEAD|"$TRUNK"|"$DEFAULT_BRANCH") continue ;; esac
+            if git merge-base --is-ancestor "origin/$ref" "origin/$TRUNK"; then
+              if [ "$DRY_RUN" = "true" ]; then
+                echo "would delete  $ref"
+              elif git push origin --delete "$ref"; then
+                echo "deleted       $ref"
+              else
+                echo "::warning::could not delete $ref"
+              fi
+            else
+              ahead=$(git rev-list --count "origin/$TRUNK..origin/$ref")
+              echo "::notice::kept $ref: $ahead commit(s) not on $TRUNK"
+            fi
+          done
