@@ -108,12 +108,14 @@ export class Jobs {
     return true
   }
 
+  // ffmpeg work has its own lane, named apart from every provider (including
+  // "local", this computer's engine, which must run one job at a time).
   laneFor(app) {
-    return app?.local ? "local" : this.providerFor(this.settings).id
+    return app?.local ? "ffmpeg" : this.providerFor(this.settings).id
   }
 
   limitFor(lane) {
-    return lane === "local" ? 2 : concurrencyFor(this.providerFor(this.settings), this.settings)
+    return lane === "ffmpeg" ? 2 : concurrencyFor(this.providerFor(this.settings), this.settings)
   }
 
   pump() {
@@ -138,7 +140,7 @@ export class Jobs {
     const controller = new AbortController()
     this.running.set(job.id, { controller, lane })
     const provider = app.local ? null : this.providerFor(this.settings)
-    this.update(job, { status: "running", startedAt: Date.now(), progress: 0.01, message: "Starting", provider: provider?.id ?? "local" }, true)
+    this.update(job, { status: "running", startedAt: Date.now(), progress: 0.01, message: "Starting", provider: provider?.id ?? "ffmpeg" }, true)
     const workDir = join(this.tmpDir, job.id)
     try {
       await mkdir(workDir, { recursive: true })

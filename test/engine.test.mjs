@@ -16,6 +16,7 @@ import { PACKS, RECIPES, packById, packForApp, pickAssets } from "../src/engine/
 import { Engine } from "../src/engine/index.mjs"
 import { LocalProvider, promptFor } from "../src/providers/local.mjs"
 import { Settings } from "../src/settings.mjs"
+import { Jobs } from "../src/jobs.mjs"
 import { appById } from "../apps/catalog.mjs"
 import { resolveValues } from "../src/apps.mjs"
 import { hasFfmpeg } from "../src/media/ffmpeg.mjs"
@@ -360,6 +361,14 @@ test("local: video drafts come back as MP4, and upscaling runs sd-cli", { skip: 
   } finally {
     await engine.close()
   }
+})
+
+test("queue: this computer's engine runs one job at a time, apart from the ffmpeg lane", () => {
+  const jobs = new Jobs({ dataDir: tmp(), settings: { get: () => undefined }, providerFor: () => ({ id: "local" }) })
+  assert.equal(jobs.laneFor({ local: "motion" }), "ffmpeg")
+  assert.equal(jobs.laneFor(appById("image-fast")), "local")
+  assert.equal(jobs.limitFor("local"), 1, "two packs at once would stop each other's server")
+  assert.equal(jobs.limitFor("ffmpeg"), 2)
 })
 
 test("settings: 'This computer' is a provider, engine builds are checked, and the desktop app can default to it", () => {

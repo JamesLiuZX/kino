@@ -58,8 +58,11 @@ jobs:
       - name: Build with Metal
         working-directory: sdcpp
         run: |
+          # @loader_path: the programs find their libraries next to themselves,
+          # wherever Kino unpacks them.
           cmake -B build -DCMAKE_BUILD_TYPE=Release -DSD_METAL=ON -DSD_BUILD_SHARED_LIBS=ON \
-            -DSD_SERVER_BUILD_FRONTEND=OFF -DCMAKE_OSX_ARCHITECTURES=arm64
+            -DSD_SERVER_BUILD_FRONTEND=OFF -DCMAKE_OSX_ARCHITECTURES=arm64 \
+            -DCMAKE_BUILD_WITH_INSTALL_RPATH=ON -DCMAKE_INSTALL_RPATH=@loader_path
           cmake --build build --config Release -j "$(sysctl -n hw.ncpu)"
 
       # The server must start and answer on this exact build before it ships.
