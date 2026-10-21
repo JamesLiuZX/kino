@@ -5,28 +5,44 @@
 //   node scripts/check-engine-files.mjs --json   sizes as JSON, for updating catalog.mjs
 
 import { FFMPEG_SOURCES, METAL_BUILD_URL, PACKS, packFiles } from "../src/engine/catalog.mjs"
-import { fileName } from "../src/engine/download.mjs"
 
 const json = process.argv.includes("--json")
 const files = PACKS.flatMap((p) => packFiles(p).map((f) => ({ pack: p.id, ...f })))
-// ffmpeg sources are fallbacks: a platform is fine while any one of its candidates answers.
-const ffmpeg = Object.entries(FFMPEG_SOURCES).flatMap(([platform, candidates]) =>
-  candidates.flatMap((urls, n) => urls.map((url) => ({ pack: `ffmpeg ${platform}`, platform, candidate: n, name: fileName(url), url, optional: true }))),
-)
 
-async function head(url) {
-  for (let attempt = 0; attempt < 3; attempt++) {
+/** HEAD a URL; network errors are retried, and other answers too when `retryStatus`. */
+async function head(url, { tries = 3, retryStatus = false, timeoutMs = 30_000 } = {}) {
+  let last
+  for (let attempt = 0; attempt < tries; attempt++) {
     try {
-      const res = await fetch(url, { method: "HEAD", redirect: "follow", headers: { "User-Agent": "Kino engine-files check" }, signal: AbortSignal.timeout(30_000) })
-      return { status: res.status, bytes: Number(res.headers.get("content-length")) || 0 }
+      const res = await fetch(url, { method: "HEAD", redirect: "follow", headers: { "User-Agent": "Kino engine-files check" }, signal: AbortSignal.timeout(timeoutMs) })
+      last = { status: res.status, bytes: Number(res.headers.get("content-length")) || 0 }
+      if (res.status === 200 || !retryStatus) return last
     } catch (e) {
-      if (attempt === 2) return { status: 0, error: e.cause?.code ?? e.message }
-      await new Promise((r) => setTimeout(r, 2000 * (attempt + 1)))
+      last = { status: 0, error: e.cause?.code ?? e.message }
     }
+    if (attempt < tries - 1) await new Promise((r) => setTimeout(r, 2000 * (attempt + 1)))
   }
+  return last
 }
 
-const results = await Promise.all([...files, ...ffmpeg].map(async (f) => ({ ...f, ...(await head(f.url)) })))
+// Model files sit on big hosts: all at once. ffmpeg's sources are small hosts
+// whose "latest" links blink out now and then, so they're asked one at a time,
+// with retries, and a platform stops at its first candidate that fully answers
+// (the rest are only fallbacks).
+const models = await Promise.all(files.map(async (f) => ({ ...f, ...(await head(f.url)) })))
+const ffmpeg = []
+for (const [platform, candidates] of Object.entries(FFMPEG_SOURCES)) {
+  for (const [n, urls] of candidates.entries()) {
+    const checked = []
+    for (const url of urls) {
+      const name = new URL(url).pathname.split("/").slice(-2).join("/")
+      checked.push({ pack: `ffmpeg ${platform}`, platform, candidate: n, name, url, optional: true, ...(await head(url, { tries: 3, retryStatus: true, timeoutMs: 15_000 })) })
+    }
+    ffmpeg.push(...checked)
+    if (checked.every((r) => r.status === 200)) break
+  }
+}
+const results = [...models, ...ffmpeg]
 const metal = await head(METAL_BUILD_URL)
 
 if (json) {

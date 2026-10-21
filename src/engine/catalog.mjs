@@ -92,14 +92,17 @@ export const PACKS = [
 // Kino from their publishers, never bundled. Linux has it a package away.
 // Each platform lists candidate sources in order (each one the zips that hold
 // ffmpeg and ffprobe); Kino keeps the first that downloads and actually runs,
-// so a publisher moving a build only costs a fallback (in October 2026 the
-// "release" links came and went between two checks; "snapshot" held). Apple
-// Silicon falls back to the Intel builds last, which run under Rosetta.
+// so a publisher moving a build only costs a fallback. In October 2026
+// martin-riedl.de's "latest" links answered 404 now and then for builds that
+// were there a minute before, so Kino tries each candidate twice, and
+// evermeet.cx's long-standing Intel builds come last. Apple Silicon reaches
+// the Intel builds only after its own, and runs them under Rosetta.
 const RIEDL = "https://ffmpeg.martin-riedl.de/redirect/latest/macos"
 const riedl = (arch, channel) => [`${RIEDL}/${arch}/${channel}/ffmpeg.zip`, `${RIEDL}/${arch}/${channel}/ffprobe.zip`]
+const EVERMEET = ["https://evermeet.cx/ffmpeg/getrelease/zip", "https://evermeet.cx/ffmpeg/getrelease/ffprobe/zip"]
 export const FFMPEG_SOURCES = {
-  "darwin-arm64": [riedl("arm64", "release"), riedl("arm64", "snapshot"), riedl("amd64", "release"), riedl("amd64", "snapshot")],
-  "darwin-x64": [riedl("amd64", "release"), riedl("amd64", "snapshot")],
+  "darwin-arm64": [riedl("arm64", "release"), riedl("arm64", "snapshot"), riedl("amd64", "release"), riedl("amd64", "snapshot"), EVERMEET],
+  "darwin-x64": [riedl("amd64", "release"), riedl("amd64", "snapshot"), EVERMEET],
   "win32-x64": [["https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-win64-gpl.zip"]],
 }
 

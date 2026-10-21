@@ -136,29 +136,34 @@ export class Engine extends EventEmitter {
     const { signal } = task.controller
     const problems = []
     for (const [n, urls] of candidates.entries()) {
-      try {
-        const unpacked = join(work, `ffmpeg-${n}`)
-        for (const [i, url] of urls.entries()) {
-          task.phase = "Downloading ffmpeg"
-          task.received = task.total = 0
-          const zip = join(work, `ffmpeg-${n}-${i}.zip`)
-          await download(url, zip, { signal, onProgress: (p) => this.progress(task, p) })
-          await unzip(zip, unpacked)
-        }
-        await mkdir(this.toolsDir, { recursive: true })
-        for (const tool of ["ffmpeg", "ffprobe"]) {
-          const found = findFile(unpacked, binaryName(tool, this.platform))
-          if (found) await rename(found, join(this.toolsDir, binaryName(tool, this.platform)))
+      // Publishers' "latest" links blink out now and then: two tries each.
+      for (let attempt = 0; attempt < 2; attempt++) {
+        const unpacked = join(work, `ffmpeg-${n}-${attempt}`)
+        try {
+          for (const [i, url] of urls.entries()) {
+            task.phase = "Downloading ffmpeg"
+            task.received = task.total = 0
+            const zip = join(work, `ffmpeg-${n}-${attempt}-${i}.zip`)
+            await download(url, zip, { signal, onProgress: (p) => this.progress(task, p) })
+            await unzip(zip, unpacked)
+          }
+          await mkdir(this.toolsDir, { recursive: true })
+          for (const tool of ["ffmpeg", "ffprobe"]) {
+            const found = findFile(unpacked, binaryName(tool, this.platform))
+            if (found) await rename(found, join(this.toolsDir, binaryName(tool, this.platform)))
+          }
+        } catch (e) {
+          if (signal.aborted) throw e
+          problems.push(e.message)
+          continue
         }
         // Keep it only if it runs here (an Intel build needs Rosetta).
         if (this.useTools() && (await hasFfmpeg())) {
           delete this.state.ffmpegError
           return this.saveState()
         }
-        problems.push(`${fileName(urls[0])} didn't run on this computer`)
-      } catch (e) {
-        if (signal.aborted) throw e
-        problems.push(e.message)
+        problems.push(`the build from ${new URL(urls[0]).host} didn't run on this computer`)
+        break
       }
     }
     this.state.ffmpegError = `Couldn't fetch ffmpeg (${problems.join("; ")}). Install it yourself to turn on camera moves and the ad editor.`

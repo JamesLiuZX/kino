@@ -242,6 +242,33 @@ test("ffmpeg install: skips a missing build and one that won't run, keeps the fi
   }
 })
 
+test("ffmpeg install: a link that answers 404 once is tried again", { skip: process.platform === "win32" }, async () => {
+  const runs = makeZip([{ name: "ffmpeg", data: '#!/bin/sh\necho "ffmpeg version fake"\n', mode: 0o755 }, { name: "ffprobe", data: "#!/bin/sh\n", mode: 0o755 }])
+  let hits = 0
+  const server = createServer((req, res) => {
+    hits++
+    if (hits === 1) {
+      res.writeHead(404)
+      return res.end()
+    }
+    res.writeHead(200, { "Content-Length": runs.length })
+    res.end(runs)
+  })
+  const base = await listen(server)
+  const path = process.env.PATH
+  try {
+    const engine = new Engine({ dir: tmp(), settings: { get: () => undefined }, ffmpegSources: { [`${process.platform}-${process.arch}`]: [[`${base}/latest/ffmpeg.zip`]] } })
+    await engine.installFfmpeg({ controller: new AbortController() }, tmp())
+    assert.equal(engine.state.ffmpegError, undefined)
+    assert.equal(hits, 2, "one 404, then the retry")
+    assert.ok(existsSync(join(engine.toolsDir, "ffmpeg")))
+  } finally {
+    process.env.PATH = path
+    recheckFfmpeg()
+    server.close()
+  }
+})
+
 // ------------------------------------------------------------------ requests
 
 test("local requests: each app's request carries its model's settings and the app's prompt wording", () => {
