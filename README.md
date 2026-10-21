@@ -249,12 +249,12 @@ is in [docs/open-generative-ai.md](docs/open-generative-ai.md).
 npm test
 ```
 
-56 tests: every shipped workflow validates against ComfyUI 0.41's node
+57 tests: every shipped workflow validates against ComfyUI 0.41's node
 definitions and stays valid once an app fills it in; the ComfyUI and RunPod
 providers run against fake servers that implement their protocols (uploads,
 WebSocket progress, cancellation, errors); This computer's engine (its zip
 reader, resumed downloads, choosing and installing a build, ffmpeg's
-fallback sources) and provider,
+fallback sources and retries) and provider,
 driving a fake sd-server through real jobs (steps, reuse, swapping packs,
 cancel, out-of-memory, video, upscaling, one job at a time); compliance rules; caption wrapping
 and safe zones; end-to-end runs through the HTTP API, including a full ad
