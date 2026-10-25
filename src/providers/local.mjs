@@ -86,8 +86,12 @@ export class LocalProvider {
     return images64.map((img, i) => ({ data: Buffer.from(img.b64_json, "base64"), filename: `result${i ? `-${i + 1}` : ""}.png`, mime: "image/png" }))
   }
 
-  /** Poll a job until it's done, turning its step count into progress. */
+  /**
+   * Poll a job until it's done, turning its step count into progress and
+   * passing on each new preview frame (a PNG of the picture so far).
+   */
   async follow(server, id, { signal, onProgress }) {
+    let seen = ""
     while (true) {
       if (signal?.aborted) throw new CanceledError()
       const job = await server.job(id, signal)
@@ -97,8 +101,11 @@ export class LocalProvider {
       if (job.status === "queued") onProgress(0.05, "Waiting for the engine")
       if (job.status === "generating") {
         const p = job.preview
-        if (p?.total_steps) onProgress(0.08 + 0.86 * Math.min(1, p.step / p.total_steps), `Step ${p.step} of ${p.total_steps}${p.pass > 1 ? ` (pass ${p.pass})` : ""}`)
-        else onProgress(0.08, "Generating")
+        const fresh = p?.b64_json && `${p.pass}:${p.step}` !== seen
+        if (fresh) seen = `${p.pass}:${p.step}`
+        const extra = fresh ? { preview: `data:image/png;base64,${p.b64_json}` } : undefined
+        if (p?.total_steps) onProgress(0.08 + 0.86 * Math.min(1, p.step / p.total_steps), `Step ${p.step} of ${p.total_steps}${p.pass > 1 ? ` (pass ${p.pass})` : ""}`, extra)
+        else onProgress(0.08, "Generating", extra)
       }
       await sleep(this.pollMs, signal)
     }

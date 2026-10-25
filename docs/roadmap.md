@@ -38,6 +38,10 @@ Principles, in order:
   and downloads the packs in one go with progress, and hands over to a first
   picture. "Use a GPU server" and "Look around first" (demo mode) are one click
   away. Model files can come from a Hugging Face mirror (`HF_ENDPOINT`).
+- **Live previews**: on This computer the picture sharpens on the stage and in
+  the Studio's feed as the engine works (sd-server's preview frame for each
+  step), under a small progress badge. Frames go straight to the browser, at
+  most four a second, and are never stored. Demo mode previews too.
 
 ### Shipping 0.2.0
 
@@ -54,8 +58,8 @@ Principles, in order:
 
 ## Next: first run and the everyday interface
 
-- **Live previews while it works.** sd-server already sends a preview frame
-  with each step; show it on the stage instead of only a progress ring.
+- **Previews from ComfyUI too**: its WebSocket sends preview frames when the
+  server runs with `--preview-method`; pass them on the same way.
 - **Each app where it runs best.** Today one backend runs everything. Let
   pictures run on this computer while H3 video goes to RunPod, automatically,
   with the choice visible on each app.

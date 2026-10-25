@@ -6,6 +6,7 @@ export const state = {
   assets: new Map(),
   jobs: new Map(),
   ads: new Map(),
+  previews: new Map(), // job id -> the engine's picture so far (a data URL), while it works
   status: null,
 }
 

@@ -105,6 +105,40 @@ test("upload, generate variations, stream events, serve files with ranges", asyn
   }
 })
 
+test("live previews go to the browser a few times a second and are never stored", async () => {
+  // Demo pictures send a frame with every step, the way This computer's engine does.
+  const dataDir = mkdtempSync(join(tmpdir(), "kino-srv-"))
+  const { server } = createServer({ dataDir, env: {}, providerOverride: new MockProvider({ stepMs: 60 }) })
+  await new Promise((r) => server.listen(0, "127.0.0.1", r))
+  const base = `http://127.0.0.1:${server.address().port}`
+  const ac = new AbortController()
+  const previews = []
+  try {
+    const sse = await fetch(`${base}/api/events`, { signal: ac.signal })
+    ;(async () => {
+      const dec = new TextDecoder()
+      let buf = ""
+      for await (const chunk of sse.body) {
+        buf += dec.decode(chunk)
+        for (let i; (i = buf.indexOf("\n\n")) >= 0; buf = buf.slice(i + 2)) {
+          const block = buf.slice(0, i)
+          if (block.startsWith("event: preview")) previews.push(JSON.parse(block.split("\ndata: ")[1]))
+        }
+      }
+    })().catch(() => {})
+    const gen = await (await fetch(`${base}/api/generate`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ app: "image-fast", values: { prompt: "a teapot" } }) })).json()
+    const id = gen.jobs[0].id
+    const job = await until(async () => (await (await fetch(`${base}/api/jobs`)).json()).find((j) => j.id === id && j.status === "done"))
+    assert.ok(previews.length >= 2, `frames arrive while it works (${previews.length})`)
+    assert.ok(previews.length < 8, `at most four a second, not one per step (${previews.length} for 10 steps)`)
+    assert.ok(previews.every((p) => p.id === id && p.url.startsWith("data:image/png;base64,")))
+    assert.ok(!JSON.stringify(job).includes("data:image"), "the job record carries no frames")
+  } finally {
+    ac.abort()
+    await new Promise((r) => (server.closeAllConnections?.(), server.close(r)))
+  }
+})
+
 test("instant camera moves render real video from a photo", { skip: !ffmpeg && "ffmpeg not installed" }, async () => {
   const s = await start()
   try {

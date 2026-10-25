@@ -524,6 +524,12 @@ input[type="checkbox"] { accent-color: var(--accent); width: 16px; height: 16px;
 .stage-progress { position: absolute; inset: 0; z-index: 4; display: grid; place-content: center; justify-items: center; gap: 10px; text-align: center; background: rgba(250, 248, 244, 0.55); backdrop-filter: blur(3px); animation: fade 0.3s var(--ease); }
 .stage-progress::before { content: ""; position: absolute; inset: 0; z-index: -1; background: linear-gradient(105deg, transparent 30%, rgba(99, 69, 229, 0.1) 45%, rgba(13, 162, 231, 0.12) 55%, transparent 70%); background-size: 260% 100%; animation: shimmer 2.4s linear infinite; }
 .stage-progress .ring { width: 64px; height: 64px; }
+/* Over a live preview: a badge at the foot of the stage, so the picture stays in view. */
+.stage-progress.over-preview { inset: auto 50% 22px auto; transform: translateX(50%); display: flex; align-items: center; gap: 12px; padding: 8px 8px 8px 12px; border-radius: 999px; background: rgba(250, 248, 244, 0.86); backdrop-filter: blur(12px); box-shadow: var(--shadow-pop); white-space: nowrap; animation: none; }
+.stage-progress.over-preview::before { display: none; }
+.stage-progress.over-preview .ring { width: 28px; height: 28px; }
+.stage-progress.over-preview .big { font: 600 13px/1 var(--font-sans); letter-spacing: 0; }
+.stage-frame.live > img { transition: filter 0.4s; filter: saturate(1.05); }
 .stage-progress .big { font: 400 30px/1.1 var(--font-display); letter-spacing: -0.01em; }
 .stage-progress .meta { font: 500 11px/1 var(--font-mono); letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
 
@@ -707,6 +713,9 @@ details.post-text p { margin: 8px 0 2px; white-space: pre-wrap; font-size: 13.5p
 .tile.job { cursor: default; background: var(--surface); }
 .job-shimmer { position: absolute; inset: 0; background: linear-gradient(110deg, transparent 20%, rgba(99, 69, 229, 0.07) 40%, rgba(13, 162, 231, 0.09) 50%, transparent 70%); background-size: 250% 100%; animation: shimmer 2.2s linear infinite; }
 .job-body { position: absolute; inset: 0; display: grid; place-content: center; justify-items: center; gap: 6px; padding: 14px; text-align: center; }
+.job-preview { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.tile.job.has-preview .job-body { inset: auto 8px 8px; padding: 8px 10px; gap: 2px; border-radius: 12px; background: rgba(250, 248, 244, 0.86); backdrop-filter: blur(10px); }
+.tile.job.has-preview .job-body .ring, .tile.job.has-preview .job-prompt { display: none; }
 .job-title { font-weight: 600; font-size: 13.5px; }
 .job-meta { font: 500 10.5px/1.4 var(--font-mono); color: var(--muted); letter-spacing: 0.04em; }
 .job-prompt { font-size: 12px; color: var(--faint); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; max-width: 90%; }

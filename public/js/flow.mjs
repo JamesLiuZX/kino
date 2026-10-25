@@ -677,9 +677,12 @@ export function mountFlow(root, taskId) {
     const result = done[run?.selected ?? 0] ? state.assets.get(done[run.selected].outputs[0]) : null
 
     const children = [bg]
+    const live = pending.length && !result ? state.previews.get(pending[0].id) : null
     if (result) children.push(resultView(result))
+    // The same frame element across redraws, so the picture doesn't blink with each step.
+    else if (live) children.push(stage.querySelector(`[data-preview-of="${pending[0].id}"]`)?.parentElement ?? h("div.stage-frame.live", { style: frameSize(ratioFor()) }, h("img", { src: live, alt: "The picture so far", dataset: { previewOf: pending[0].id } })))
     else children.push(previewView())
-    if (pending.length && !result) children.push(progressView(pending, jobs.length))
+    if (pending.length && !result) children.push(progressView(pending, jobs.length, { over: !!live }))
     if (run?.done && !done.length && failed.length) children.push(failedView(failed[0]))
     if (result) children.push(h("div.stage-tag", {}, result.demo ? h("span.pill.small.mono", {}, "Demo result") : null, appById(result.appId) ? h("span.pill.small.mono", {}, appById(result.appId).label) : null))
     replace(stage, ...children)
@@ -739,13 +742,14 @@ export function mountFlow(root, taskId) {
     return h("div.stage-empty", {}, h("div.ghost-frame", { style: { width: "120px", height: "150px" } }, icon(ico)), h("p.display-sm", {}, `${lead} `, h("em", {}, accent), ` ${tail}`))
   }
 
-  function progressView(pending, total) {
+  /** Progress over the stage; `over` a live preview, a small badge that leaves the picture in view. */
+  function progressView(pending, total, { over = false } = {}) {
     const p = pending.reduce((a, j) => a + (j.progress ?? 0), 0) / pending.length
     const lead = pending[0]
     const elapsed = lead.startedAt ? (Date.now() - lead.startedAt) / 1000 : 0
     const eta = lead.status === "running" && lead.estimate ? Math.max(0, lead.estimate - elapsed) : null
     return h(
-      "div.stage-progress",
+      `div.stage-progress${over ? ".over-preview" : ""}`,
       {},
       ring(p, lead.status === "queued" || p === 0),
       h("p.big", {}, lead.status === "queued" ? "In the queue" : lead.message || "Making it"),

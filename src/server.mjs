@@ -247,6 +247,7 @@ export function createServer({ dataDir, env = process.env, ...options } = {}) {
   }
   events.on("job", (j) => broadcast("job", j))
   events.on("job-removed", (j) => broadcast("job-removed", j))
+  events.on("preview", (p) => broadcast("preview", p))
   events.on("asset", (a) => broadcast("asset", assetView(a)))
   events.on("asset-removed", (a) => broadcast("asset-removed", a))
   events.on("ad", (a) => broadcast("ad", a))

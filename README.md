@@ -48,7 +48,8 @@ Smooth motion uses ffmpeg's motion-compensated interpolation, and instant
 camera moves and the Ad Studio's editor need only ffmpeg. MiniMax H3 (video with
 sound), LTX-2.3 (talking photos) and SeedVR2 (video upscaling) are too big for
 most personal computers; those apps say so and run on a GPU server. The engine
-keeps one pack loaded between jobs and frees the memory after ten idle minutes.
+keeps one pack loaded between jobs and frees the memory after ten idle minutes,
+and while it works the picture sharpens on the stage, step by step.
 Packs live in the data folder (`KINO_ENGINE_DIR` moves them); **Advanced** lets
 you use your own stable-diffusion.cpp build, pin a release, or download the
 models from a Hugging Face mirror where Hugging Face is slow or blocked
@@ -253,10 +254,11 @@ is in [docs/open-generative-ai.md](docs/open-generative-ai.md).
 npm test
 ```
 
-58 tests: every shipped workflow validates against ComfyUI 0.41's node
+59 tests: every shipped workflow validates against ComfyUI 0.41's node
 definitions and stays valid once an app fills it in; the ComfyUI and RunPod
 providers run against fake servers that implement their protocols (uploads,
-WebSocket progress, cancellation, errors); This computer's engine (its zip
+WebSocket progress, cancellation, errors); live previews reaching the browser
+throttled and unstored; This computer's engine (its zip
 reader, resumed downloads, choosing and installing a build, the one-go
 first-run setup through a mirror, ffmpeg's fallback sources and retries) and provider,
 driving a fake sd-server through real jobs (steps, reuse, swapping packs,

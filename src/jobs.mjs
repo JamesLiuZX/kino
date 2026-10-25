@@ -20,6 +20,7 @@ export class Jobs {
     this.tmpDir = join(dataDir, "tmp")
     this.running = new Map() // jobId -> {controller, lane}
     this.lastEmit = new Map()
+    this.lastPreview = new Map()
   }
 
   /** On boot: anything that was mid-run when the server stopped can't be resumed. */
@@ -145,7 +146,10 @@ export class Jobs {
     try {
       await mkdir(workDir, { recursive: true })
       const { files, inputs, bindValues, parents } = this.inputsFor(job, app)
-      const onProgress = (progress, message) => this.progress(job, progress, message)
+      const onProgress = (progress, message, { preview } = {}) => {
+        this.progress(job, progress, message)
+        if (preview) this.preview(job, preview)
+      }
       let outputs
       if (app.local) {
         const runner = this.local[app.local]
@@ -189,6 +193,7 @@ export class Jobs {
       }
     } finally {
       this.running.delete(job.id)
+      this.lastPreview.delete(job.id)
       rm(workDir, { recursive: true, force: true }).catch(() => {})
       this.pump()
     }
@@ -220,6 +225,18 @@ export class Jobs {
     const changed = message !== job.message
     this.store.touch("jobs", job.id, { progress: p, message })
     this.emit(job, changed)
+  }
+
+  /**
+   * The picture so far, as a data URL, straight to the browser: at most four a
+   * second, and never stored, since the result replaces it in moments.
+   */
+  preview(job, url) {
+    if (TERMINAL.has(job.status)) return
+    const now = Date.now()
+    if (now - (this.lastPreview.get(job.id) ?? 0) < 250) return
+    this.lastPreview.set(job.id, now)
+    this.events.emit("preview", { id: job.id, url })
   }
 
   update(job, changes, force = false) {

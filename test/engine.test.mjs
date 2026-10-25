@@ -381,11 +381,14 @@ test("local: runs a picture through sd-server with live steps, keeps the server 
 
     const { app, values } = job("image-fast", { prompt: "a jar of bath salts", seed: 42 })
     const progress = []
-    const out = await provider.run({ app, values, inputs: {}, workDir: tmp(), onProgress: (p, m) => progress.push([p, m]) })
+    const out = await provider.run({ app, values, inputs: {}, workDir: tmp(), onProgress: (p, m, extra) => progress.push([p, m, extra?.preview]) })
     assert.equal(out.length, 1)
     assert.equal(out[0].mime, "image/png")
     assert.equal(out[0].data.readUInt32BE(0), 0x89504e47)
     assert.ok(progress.some(([, m]) => /^Step \d+ of 8$/.test(m)), "steps come through")
+    const previews = progress.filter(([, , preview]) => preview)
+    assert.ok(previews.length > 0 && previews.every(([, , url]) => url === "data:image/png;base64,iVBORw0KGgo="), "preview frames come through as PNGs")
+    assert.equal(new Set(previews.map(([, m]) => m)).size, previews.length, "each frame once, not on every poll")
     for (let i = 1; i < progress.length; i++) assert.ok(progress[i][0] >= progress[i - 1][0] - 1e-9, "progress never goes backwards")
 
     const started = requests().filter((r) => r.argv)

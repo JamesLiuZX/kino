@@ -25,13 +25,19 @@ export class MockProvider {
 
   async run({ app, values, inputs = {}, workDir, onProgress = () => {}, signal }) {
     const steps = 10
-    for (let i = 1; i <= steps; i++) {
-      await sleep(this.stepMs, signal)
-      onProgress(0.05 + (i / steps) * 0.6, `Generating ${i}/${steps} (demo)`)
-    }
     const seed = values.seed ?? 1
     const image = inputs.image ?? inputs.image_1
     const tmp = (name) => join(workDir, name)
+    const { width, height } = values.width && values.height ? { width: values.width, height: values.height } : sizeFor(values.aspect ?? "1:1", 0.6, 16)
+    for (let i = 1; i <= steps; i++) {
+      await sleep(this.stepMs, signal)
+      // A new picture sharpens on the stage step by step, the way real engines' previews do.
+      const preview =
+        app.output === "image" && !image
+          ? `data:image/png;base64,${proceduralImage({ width: Math.max(4, Math.round((width * i) / steps / 12)), height: Math.max(4, Math.round((height * i) / steps / 12)), seed, prompt: values.prompt ?? "" }).toString("base64")}`
+          : null
+      onProgress(0.05 + (i / steps) * 0.6, `Generating ${i}/${steps} (demo)`, preview ? { preview } : undefined)
+    }
 
     if (app.output === "image") {
       if (image && (await hasFfmpeg())) {
@@ -46,7 +52,6 @@ export class MockProvider {
         onProgress(0.95, "Saving")
         return [{ path: out, filename: "result.png", mime: "image/png" }]
       }
-      const { width, height } = values.width && values.height ? { width: values.width, height: values.height } : sizeFor(values.aspect ?? "1:1", 0.6, 16)
       const png = proceduralImage({ width: Math.min(width, 1536), height: Math.min(height, 1536), seed, prompt: values.prompt ?? "" })
       onProgress(0.95, "Saving")
       return [{ data: png, filename: "result.png", mime: "image/png" }]

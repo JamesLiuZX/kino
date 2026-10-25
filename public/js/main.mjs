@@ -222,8 +222,20 @@ function connect() {
       apply(data)
       emit(type, data)
     })
-  relay("job", (j) => state.jobs.set(j.id, j))
-  relay("job-removed", ({ id }) => state.jobs.delete(id))
+  relay("job", (j) => {
+    state.jobs.set(j.id, j)
+    if (j.status !== "queued" && j.status !== "running") state.previews.delete(j.id)
+  })
+  relay("job-removed", ({ id }) => (state.jobs.delete(id), state.previews.delete(id)))
+  // The picture so far: swapped in place wherever it's showing; its first frame
+  // redraws the job so views can make room for it.
+  es.addEventListener("preview", (e) => {
+    const { id, url } = JSON.parse(e.data)
+    const first = !state.previews.has(id)
+    state.previews.set(id, url)
+    for (const img of document.querySelectorAll(`img[data-preview-of="${id}"]`)) img.src = url
+    if (first && state.jobs.has(id)) emit("job", state.jobs.get(id))
+  })
   relay("asset", (a) => state.assets.set(a.id, a))
   relay("asset-removed", ({ id }) => state.assets.delete(id))
   relay("ad", (a) => state.ads.set(a.id, a))

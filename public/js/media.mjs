@@ -192,8 +192,10 @@ export function jobCard(job, { onRemove } = {}) {
   }
   const pct = Math.round((job.progress ?? 0) * 100)
   const eta = job.status === "running" && job.estimate ? Math.max(0, job.estimate - elapsed) : null
+  const live = state.previews.get(job.id)
+  if (live) card.classList.add("has-preview")
   card.append(
-    h("div.job-shimmer"),
+    live ? h("img.job-preview", { src: live, alt: "", dataset: { previewOf: job.id } }) : h("div.job-shimmer"),
     h(
       "div.job-body",
       {},
