@@ -7,7 +7,7 @@ import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "
 import { join } from "node:path"
 import { randomBytes } from "node:crypto"
 
-const COLLECTIONS = ["assets", "jobs", "apps", "boards", "ads", "brands"]
+const COLLECTIONS = ["assets", "jobs", "apps", "boards", "ads", "brands", "recipes", "runs"]
 
 /** Time-sortable ids: newest sorts last as strings, fine for listing. */
 export const newId = (prefix) => `${prefix}_${Date.now().toString(36)}${randomBytes(3).toString("hex")}`

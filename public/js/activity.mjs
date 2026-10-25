@@ -117,11 +117,21 @@ export function watchCompletions() {
   on("job", (j) => {
     const before = seen.get(j.id)
     seen.set(j.id, j.status)
-    if (before === j.status || j.adId || watched.has(j.id) || state.view === "studio") return
+    // A recipe's jobs report as one, when the run ends.
+    if (before === j.status || j.adId || j.runId || watched.has(j.id) || state.view === "studio") return
     if (j.status === "done") {
       const id = j.outputs?.[0]
       toast(`Ready: ${appById(j.appId)?.label ?? "your result"}`, { kind: "ok", action: id ? { label: "View", run: () => openLightbox(id, [id]) } : undefined, timeout: 7000 })
     } else if (j.status === "failed") toast(`${appById(j.appId)?.label ?? "A job"} didn't work: ${j.error ?? "see the Library"}`, { kind: "error", timeout: 8000 })
+  })
+  const seenRuns = new Map()
+  on("run", (r) => {
+    const before = seenRuns.get(r.id) ?? "running"
+    seenRuns.set(r.id, r.status)
+    if (before === r.status || r.status === "running" || r.status === "canceled" || (state.view === "recipes" && state.routeArg === r.recipeId)) return
+    const view = { label: "View", run: () => (location.hash = `#/recipes/${encodeURIComponent(r.recipeId)}`) }
+    if (r.status === "done") toast(`Ready: ${r.title}`, { kind: "ok", action: view, timeout: 8000 })
+    else toast(`${r.title}: ${r.status === "partial" ? "some steps didn't work" : "it didn't work"}`, { kind: "error", action: view, timeout: 8000 })
   })
   on("ad", (a) => {
     const before = seenAds.get(a.id)

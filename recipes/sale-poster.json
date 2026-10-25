@@ -1,0 +1,16 @@
+{
+  "kino": "recipe/1",
+  "id": "sale-poster",
+  "title": "Sale poster from words",
+  "blurb": "Two poster designs with your headline written in legibly, then each in story size. No photo needed.",
+  "category": "Promote",
+  "tags": ["Posters", "Words in the picture"],
+  "inputs": [
+    { "id": "headline", "type": "text", "label": "Headline", "default": "Weekend Sale" },
+    { "id": "subject", "type": "text", "label": "What it's for", "default": "a natural skincare brand, amber glass bottles and green leaves" }
+  ],
+  "steps": [
+    { "id": "posters", "label": "Two designs", "app": "image-pro", "count": 2, "values": { "prompt": "A promotional poster for {{subject}}, with the headline “{{headline}}” in large, bold, legible letters. Clean modern layout, studio lighting.", "aspect": "3:4" } },
+    { "id": "stories", "label": "Story size", "app": "reframe", "values": { "image": "@posters", "aspect": "9:16", "fit": "fit" } }
+  ]
+}

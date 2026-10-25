@@ -5,7 +5,7 @@
 // as the Studio, so switching to Advanced keeps your work.
 
 import { h, icon, api, upload, toast, fail, store, aspectGlyph, fmtSeconds, replace } from "./ui.mjs"
-import { state, on, appById, cameraById, styleById, isDemo, isWeb, needsSetup, webLocal, fullStudioUrl, watched, viewState } from "./state.mjs"
+import { state, on, appById, cameraById, styleById, isDemo, isPart, isWeb, needsSetup, webLocal, fullStudioUrl, watched, viewState } from "./state.mjs"
 import { cameraThumb, openCameraSheet, STYLE_SWATCH } from "./pickers.mjs"
 import { openLightbox, ring, download } from "./media.mjs"
 import { openRecorder } from "./recorder.mjs"
@@ -358,7 +358,7 @@ export function mountFlow(root, taskId) {
     const fit = (a) => accepts.includes(a.kind)
     const brand = s.brandFirst ? brandPhotos().filter(fit) : []
     const recent = [...state.assets.values()]
-      .filter((a) => fit(a) && a.source !== "ad-part" && !brand.includes(a))
+      .filter((a) => fit(a) && !isPart(a) && !brand.includes(a))
       .sort((a, b) => b.createdAt - a.createdAt)
     const selected = v[s.id]
     if (selected && !brand.some((a) => a.id === selected) && !recent.slice(0, 6).some((a) => a.id === selected)) {
@@ -896,7 +896,7 @@ export function mountFlow(root, taskId) {
   function historyFor() {
     const apps = new Set(task.steps.length ? [task.app({ ...v, motion: "camera" }), task.app({ ...v, motion: "ai" }), task.app({ ...v, hasText: true }), task.app({ ...v, hasText: false })] : [])
     return [...state.assets.values()]
-      .filter((a) => apps.has(a.appId) && a.source !== "ad-part")
+      .filter((a) => apps.has(a.appId) && !isPart(a))
       .sort((a, b) => b.createdAt - a.createdAt)
       .slice(0, 10)
   }

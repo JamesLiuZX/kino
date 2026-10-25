@@ -1,0 +1,19 @@
+{
+  "kino": "recipe/1",
+  "id": "festive-promo",
+  "title": "Festive promotion",
+  "blurb": "Your product dressed for the season with your offer written in, in feed, portrait and story sizes, plus a camera move for Reels.",
+  "category": "Festive",
+  "tags": ["Lunar New Year", "Hari Raya", "Deepavali", "Christmas", "11.11"],
+  "inputs": [
+    { "id": "photo", "type": "image", "label": "Product photo", "help": "Any clear photo of the product on its own." },
+    { "id": "occasion", "type": "choice", "label": "The occasion", "options": ["Lunar New Year", "Hari Raya", "Deepavali", "Christmas", "11.11 sale"] },
+    { "id": "offer", "type": "text", "label": "Your offer, in a few words", "default": "20% off this week" }
+  ],
+  "steps": [
+    { "id": "dressed", "label": "Festive scene", "app": "edit", "keep": false, "values": { "image": "{{photo}}", "prompt": "Place this product on a festive table decorated for {{occasion}}, warm celebratory light. Keep the product exactly as it is." } },
+    { "id": "poster", "label": "With your offer", "app": "edit", "keep": false, "values": { "image": "@dressed", "prompt": "Add the words “{{offer}}” in large, bold, legible letters near the top, in colours that suit {{occasion}}. Keep everything else exactly as it is." } },
+    { "id": "sizes", "label": "Feed, portrait and story", "app": "reframe", "values": { "image": "@poster", "fit": "fit" }, "each": { "aspect": ["1:1", "4:5", "9:16"] } },
+    { "id": "move", "label": "Camera move for Reels", "app": "video-instant", "values": { "image": "@dressed", "camera": "push-in", "aspect": "9:16", "duration": 5 } }
+  ]
+}

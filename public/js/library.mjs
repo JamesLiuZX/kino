@@ -1,7 +1,7 @@
 // Library: everything you've made or uploaded, searchable, with favourites.
 
 import { h, icon, api, upload, toast, fail, replace } from "./ui.mjs"
-import { state, on } from "./state.mjs"
+import { state, on, isPart } from "./state.mjs"
 import { assetCard, masonry } from "./media.mjs"
 
 const FILTERS = [
@@ -41,7 +41,7 @@ export function mountLibrary(root) {
   const visible = () => {
     const f = FILTERS.find((x) => x.id === filter)
     return [...state.assets.values()]
-      .filter((a) => a.source !== "ad-part")
+      .filter((a) => !isPart(a))
       .filter((a) => !f.test || f.test(a))
       .filter((a) => !q || `${a.prompt ?? ""} ${a.name ?? ""} ${a.model ?? ""}`.toLowerCase().includes(q))
       .sort((a, b) => b.createdAt - a.createdAt)

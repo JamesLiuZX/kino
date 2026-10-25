@@ -9,6 +9,7 @@
 //   derived params compute their value from the others and are never shown.
 
 import { aspectById, sizeFor } from "../src/presets.mjs"
+import { FITS } from "../src/media/reframe.mjs"
 import { h3Prompt, imagePrompt, talkingPrompt, wanPrompt } from "../src/prompt.mjs"
 
 const seed = { id: "seed", type: "seed", label: "Seed", bind: "seeds" }
@@ -147,6 +148,22 @@ export const APPS = [
       { id: "camera", type: "camera", default: "push-in" },
       { id: "aspect", type: "aspect", default: "9:16", options: ["9:16", "1:1", "4:5", "16:9"] },
       { id: "duration", type: "duration", default: 4, min: 2, max: 10, step: 1 },
+    ],
+  },
+  {
+    id: "reframe",
+    tool: "edit",
+    label: "Reframe · instant",
+    model: "Kino reframe (local, no GPU)",
+    local: "reframe",
+    output: "image",
+    gpu: 0,
+    seconds: 2,
+    blurb: "The same picture in another shape for every platform: crop to fill, or keep it whole on soft edges or on white. A second, no GPU.",
+    params: [
+      { id: "image", type: "image", label: "Photo", required: true },
+      { id: "aspect", type: "aspect", default: "4:5", options: ["1:1", "4:5", "3:4", "9:16", "16:9"] },
+      { id: "fit", type: "select", label: "Fit", default: "fill", options: FITS },
     ],
   },
   {

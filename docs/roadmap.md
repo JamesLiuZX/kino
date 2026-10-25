@@ -38,6 +38,15 @@ Principles, in order:
   and downloads the packs in one go with progress, and hands over to a first
   picture. "Use a GPU server" and "Look around first" (demo mode) are one click
   away. Model files can come from a Hugging Face mirror (`HF_ENDPOINT`).
+- **Recipes** (`#/recipes`): chains of apps as small JSON files
+  ([docs/recipes.md](recipes.md)), with a gallery of six: marketplace listing
+  set, Xiaohongshu carousel, story set, festive promotion, sale poster and
+  three camera moves with no GPU. Steps wait for the ones they need, run once
+  per earlier result and per `each` value, and keep in-between results out of
+  the library's main view; runs can be cancelled and every run's results stay
+  on the recipe's page. Import, export, and duplicate-and-edit with checks that
+  name each problem. **Reframe** (ffmpeg, instant) makes every platform size,
+  and puts cut-outs on white for marketplace main images.
 - **Live previews**: on This computer the picture sharpens on the stage and in
   the Studio's feed as the engine works (sd-server's preview frame for each
   step), under a small progress badge. Frames go straight to the browser, at
@@ -77,14 +86,10 @@ Principles, in order:
 Open Generative AI offers 420 models; what people want is a result they can
 use. Kino's answer is recipes:
 
-- **Recipes**: a saved chain of steps with the knobs that matter exposed, e.g.
-  *product photo → new scene → camera move → captions → 9:16, 4:5 and 1:1*.
-  Stored as small JSON files, so they can be shared, imported and versioned
-  like imported ComfyUI workflows are today.
-- **A recipe gallery** for small brands, starting with: Amazon/Shopee listing
-  set, Xiaohongshu carousel, TikTok product ad, Instagram story set, festive
-  promotions (Lunar New Year, 11.11, Christmas), wellness ads that pass
-  health-ad rules, and UGC talking-head ads.
+- **More recipes**: captions and end cards as a step (the Ad Studio's editor
+  as an app), a TikTok product ad, wellness ads that pass health-ad rules, UGC
+  talking-head ads; a brand kit as a recipe input; "Save this as a recipe"
+  from a finished run; recipes in the web demo.
 - **Brand kits for every tool**, not just ads: colours, fonts, logo, voice,
   approved claims and banned words, applied to captions, end cards and
   prompts. The HerbalBath profile is the first one.

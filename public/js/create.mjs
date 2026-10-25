@@ -3,7 +3,7 @@
 // everything else out of the way. Results stream into the feed above it.
 
 import { h, icon, api, upload, toast, fail, popover, closePopover, store, aspectGlyph, fmtSeconds, replace } from "./ui.mjs"
-import { state, on, appById, appsForTool, toolById, cameraById, styleById, audioById, aspectById, isDemo, isWeb, needsSetup, webLocal, fullStudioUrl, viewState } from "./state.mjs"
+import { state, on, isPart, appById, appsForTool, toolById, cameraById, styleById, audioById, aspectById, isDemo, isWeb, needsSetup, webLocal, fullStudioUrl, viewState } from "./state.mjs"
 import { assetCard, jobCard, masonry } from "./media.mjs"
 import { openRecorder } from "./recorder.mjs"
 import { openCameraSheet, cameraThumb, aspectPicker, stylePicker, audioPicker, durationPicker, selectPicker, STYLE_SWATCH, AUDIO_ICON } from "./pickers.mjs"
@@ -269,7 +269,7 @@ export function mountCreate(root) {
   }
 
   function openRefMenu(anchor, p, input) {
-    const recent = [...state.assets.values()].filter((a) => a.kind === p.type && a.source !== "ad-part").sort((a, b) => b.createdAt - a.createdAt).slice(0, 12)
+    const recent = [...state.assets.values()].filter((a) => a.kind === p.type && !isPart(a)).sort((a, b) => b.createdAt - a.createdAt).slice(0, 12)
     popover(
       anchor,
       h(

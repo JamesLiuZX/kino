@@ -5,7 +5,7 @@ import { EventEmitter } from "node:events"
 import { createServer as createHttpServer } from "node:http"
 import { timingSafeEqual } from "node:crypto"
 import { readFileSync } from "node:fs"
-import { join } from "node:path"
+import { basename, extname, join } from "node:path"
 import { fileURLToPath } from "node:url"
 import { Store } from "./store.mjs"
 import { Settings } from "./settings.mjs"
@@ -16,10 +16,12 @@ import { providerFor } from "./providers/index.mjs"
 import { Engine } from "./engine/index.mjs"
 import { claudeStatus, enhancePrompt } from "./llm.mjs"
 import { AdStudio, ENGINES } from "./ads/studio.mjs"
+import { Recipes } from "./recipes.mjs"
 import { PLATFORMS } from "./ads/platforms.mjs"
 import { ANGLES } from "./ads/schema.mjs"
 import { renderMotion } from "./media/motion.mjs"
-import { hasFfmpeg } from "./media/ffmpeg.mjs"
+import { reframeFilter, reframeSize } from "./media/reframe.mjs"
+import { hasFfmpeg, probe, run } from "./media/ffmpeg.mjs"
 import { HttpError, Router, parseCookies, readBody, readJson, send, serveFile } from "./http.mjs"
 
 const ROOT = fileURLToPath(new URL("..", import.meta.url))
@@ -57,19 +59,31 @@ export function createStudio({ dataDir, env = process.env, providerOverride, set
         await renderMotion({ image: inputs.image, out, camera: values.camera, aspect: values.aspect, duration: values.duration })
         return [{ path: out, filename: "motion.mp4", mime: "video/mp4" }]
       },
+      reframe: async ({ values, inputs, workDir, onProgress, signal }) => {
+        if (!(await hasFfmpeg())) throw new Error("Reframing needs ffmpeg installed on this machine.")
+        onProgress(0.3, "Reframing")
+        const { width, height } = await probe(inputs.image)
+        const size = reframeSize({ width, height, aspect: values.aspect, fit: values.fit })
+        // Cropping a cut-out keeps it transparent; everything else is a JPEG.
+        const png = values.fit === "fill" && /^\.(png|webp)$/i.test(extname(inputs.image))
+        const out = join(workDir, png ? "reframed.png" : "reframed.jpg")
+        await run("ffmpeg", ["-y", "-v", "error", "-i", inputs.image, "-filter_complex", reframeFilter({ ...size, fit: values.fit }), "-map", "[out]", "-frames:v", "1", ...(png ? [] : ["-q:v", "2"]), out], { signal })
+        return [{ path: out, filename: basename(out), mime: png ? "image/png" : "image/jpeg" }]
+      },
       "ad-render": (ctx) => studio.runRender(ctx),
     },
   })
   studio = new AdStudio({ store, library, jobs, settings, events })
+  const recipes = new Recipes({ store, apps, jobs, library, events })
   jobs.start()
   // Brand photos go into the library up front, so the Ad Studio can show them.
   for (const b of studio.brands()) studio.brandAssets(b).catch((e) => console.error("[kino] brand assets:", e.message))
-  return { events, store, settings, apps, library, jobs, studio, engine, provider: () => pick(settings) }
+  return { events, store, settings, apps, library, jobs, studio, recipes, engine, provider: () => pick(settings) }
 }
 
 export function createServer({ dataDir, env = process.env, ...options } = {}) {
   const ctx = createStudio({ dataDir, env, ...options })
-  const { events, store, settings, apps, library, jobs, studio, engine } = ctx
+  const { events, store, settings, apps, library, jobs, studio, recipes, engine } = ctx
   const token = env.KINO_TOKEN || ""
   const maxUpload = Number(env.KINO_MAX_UPLOAD_MB || 300) * 1024 * 1024
   const r = new Router()
@@ -111,8 +125,8 @@ export function createServer({ dataDir, env = process.env, ...options } = {}) {
       limit: Number(query.get("limit")) || 120,
       before: Number(query.get("before")) || undefined,
     })
-    // Ad parts (stills and clips made for an ad) stay out of the main library.
-    return rows.filter((a) => source || a.source !== "ad-part").map(assetView)
+    // Parts (an ad's stills and clips, a recipe's in-between steps) stay out of the main library.
+    return rows.filter((a) => source || (a.source !== "ad-part" && a.source !== "recipe-part")).map(assetView)
   })
 
   r.on("POST", "/api/assets", async ({ req }) => {
@@ -218,6 +232,17 @@ export function createServer({ dataDir, env = process.env, ...options } = {}) {
     send(res, 200, JSON.stringify(prompt, null, 2), { "Content-Type": "application/json; charset=utf-8", "Content-Disposition": `attachment; filename="${app.id}-api.json"` })
   })
 
+  // ------------------------------------------------------------ recipes
+  r.on("GET", "/api/recipes", () => recipes.list())
+  r.on("GET", "/api/recipes/:id", ({ params }) => recipes.get(params.id) ?? notFound("That recipe is gone."))
+  r.on("POST", "/api/recipes", async ({ req }) => wrap400(() => readJson(req).then((b) => recipes.save(b))))
+  r.on("DELETE", "/api/recipes/:id", ({ params }) => wrap400(async () => ({ ok: recipes.remove(params.id) })))
+  r.on("POST", "/api/recipes/:id/run", async ({ req, params }) => wrap400(() => readJson(req).then((b) => recipes.start(params.id, b.inputs))))
+  r.on("GET", "/api/runs", ({ query }) => recipes.runs({ recipeId: query.get("recipe") || undefined }))
+  r.on("GET", "/api/runs/:id", ({ params }) => recipes.getRun(params.id) ?? notFound("That run is gone."))
+  r.on("POST", "/api/runs/:id/cancel", ({ params }) => wrap400(async () => recipes.cancel(params.id)))
+  r.on("DELETE", "/api/runs/:id", ({ params }) => ({ ok: recipes.removeRun(params.id) }))
+
   // ------------------------------------------------------------ ads
   r.on("GET", "/api/brands", () => studio.brands().map(brandView))
   r.on("PUT", "/api/brands/:id", async ({ req, params }) => brandView(studio.saveBrand(params.id, await readJson(req))))
@@ -252,6 +277,8 @@ export function createServer({ dataDir, env = process.env, ...options } = {}) {
   events.on("asset-removed", (a) => broadcast("asset-removed", a))
   events.on("ad", (a) => broadcast("ad", a))
   events.on("ad-removed", (a) => broadcast("ad-removed", a))
+  events.on("run", (r) => broadcast("run", r))
+  events.on("run-removed", (r) => broadcast("run-removed", r))
   events.on("settings", (s) => broadcast("settings", s))
   events.on("apps", () => broadcast("apps", catalogue(apps)))
   engine.on("change", (st) => broadcast("engine", st))

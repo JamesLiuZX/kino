@@ -3,7 +3,7 @@
 // results to pick up from.
 
 import { h, icon, replace } from "./ui.mjs"
-import { state, on, cameraById, isDemo, isWeb, needsSetup, setMode } from "./state.mjs"
+import { state, on, cameraById, isDemo, isPart, isWeb, needsSetup, setMode } from "./state.mjs"
 import { cameraThumb } from "./pickers.mjs"
 import { openLightbox, actionsFor } from "./media.mjs"
 import { wordsFor } from "./flow.mjs"
@@ -121,6 +121,7 @@ export function mountHome(root) {
       ),
     )
     const cutoutVisual = h("div.tv-scene.check", {}, product(cutout))
+    const setVisual = h("div.tv-scene.paper", {}, h("div.set-frames", {}, ...["1 / 1", "3 / 4", "9 / 16"].map((r) => h("span", { style: { aspectRatio: r } }, photo ? h("img.photo", { src: photo, alt: "" }) : null))))
     const imageVisual = h("div.tv-scene.studio", {}, h("div", { style: { width: "54%", aspectRatio: "1", borderRadius: "18px", background: "linear-gradient(135deg,#f7d46b,#f29a72)", boxShadow: "0 18px 30px -16px rgba(21,19,26,.35)" } }), h("span.type-line", {}, "A cosy HDB living room at golden hour"))
     const talkVisual = h(
       "div.tv-scene.studio",
@@ -142,6 +143,7 @@ export function mountHome(root) {
     replace(
       tasksEl,
       card({ id: "ad", href: "#/ads", featured: true, title: ["A video", "ad"], blurb: "From your product photo to a finished TikTok or Reels ad: script, shots, captions and an end card, checked against Meta and TikTok health-ad rules.", visual: adVisual, meta: [{ label: "About a minute" }, { label: "Free in Quick mode", kind: "ok" }], d: 0.4 }),
+      isWeb() ? null : card({ id: "recipes", href: "#/recipes", title: ["A whole", "set"], blurb: "Recipes: a listing set, a 小红书 carousel or a festive promo from one photo, every size in one go.", visual: setVisual, meta: [{ label: "6 recipes" }], d: 0.43 }),
       card({ id: "photo", href: "#/make/photo", title: ["Product photo,", "new scene"], blurb: "Your real product, somewhere new. The label stays as it is.", visual: photoVisual, d: 0.46 }),
       card({ id: "animate", href: "#/make/animate", title: ["Bring it", "to life"], blurb: "Twenty camera moves, previewed on your photo.", visual: animateVisual, d: 0.52 }),
       card({ id: "change", href: "#/make/change", title: ["Change a", "photo"], blurb: "New background or new light, with words.", visual: changeVisual, d: 0.58 }),
@@ -166,7 +168,7 @@ export function mountHome(root) {
 
   function renderRecent() {
     const items = [...state.assets.values()]
-      .filter((a) => a.source !== "ad-part" && a.source !== "brand" && a.source !== "upload")
+      .filter((a) => !isPart(a) && a.source !== "brand" && a.source !== "upload")
       .sort((a, b) => b.createdAt - a.createdAt)
       .slice(0, 12)
     const ids = items.map((a) => a.id)

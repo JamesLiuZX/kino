@@ -1,0 +1,24 @@
+{
+  "kino": "recipe/1",
+  "id": "marketplace-listing",
+  "title": "Marketplace listing set",
+  "blurb": "One product photo becomes a listing: the main image on pure white, two lifestyle shots and a transparent cut-out for banners, square the way Shopee, Lazada and Amazon show them.",
+  "category": "Sell online",
+  "tags": ["Shopee", "Lazada", "Amazon"],
+  "inputs": [
+    { "id": "photo", "type": "image", "label": "Product photo", "help": "Any clear photo of the product on its own." },
+    {
+      "id": "scene",
+      "type": "text",
+      "label": "Where it's used",
+      "default": "on a bright bathroom counter with green plants, soft morning light",
+      "ideas": ["on a bright bathroom counter with green plants, soft morning light", "on a wooden kitchen table by a window, warm afternoon light", "on a bedside table next to a reading lamp, cosy evening light"]
+    }
+  ],
+  "steps": [
+    { "id": "cutout", "label": "Cut-out", "app": "cutout", "values": { "image": "{{photo}}" } },
+    { "id": "main", "label": "Main image on white", "app": "reframe", "values": { "image": "@cutout", "aspect": "1:1", "fit": "white" } },
+    { "id": "lifestyle", "label": "Lifestyle shots", "app": "edit", "count": 2, "keep": false, "values": { "image": "{{photo}}", "prompt": "Place this product {{scene}}. Keep the product, its label and its colours exactly as they are." } },
+    { "id": "lifestyle-square", "label": "Lifestyle shots, square", "app": "reframe", "values": { "image": "@lifestyle", "aspect": "1:1", "fit": "fill" } }
+  ]
+}

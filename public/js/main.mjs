@@ -11,6 +11,7 @@ import { mountApps } from "./apps.mjs"
 import { mountSettings } from "./settings.mjs"
 import { mountHome } from "./home.mjs"
 import { mountWelcome } from "./welcome.mjs"
+import { mountRecipes } from "./recipes.mjs"
 import { mountFlow, taskForCompose, openTask } from "./flow.mjs"
 import { activityButton, watchCompletions } from "./activity.mjs"
 
@@ -20,6 +21,7 @@ const ROUTES = {
   studio: { title: "Studio", mount: (el) => mountCreate(el) },
   ads: { title: "Ads", mount: (el) => (mode.value === "advanced" ? mountAds(el) : mountAdsSimple(el)) },
   library: { title: "Library", mount: (el) => mountLibrary(el) },
+  recipes: { title: "Recipes", mount: (el, arg) => mountRecipes(el, arg) },
   apps: { title: "Apps", mount: (el) => mountApps(el) },
   settings: { title: "Settings", mount: (el) => mountSettings(el) },
   welcome: { title: "Set up", mount: (el) => mountWelcome(el) },
@@ -28,11 +30,13 @@ const ROUTES = {
 const NAV = {
   simple: [
     { id: "home", label: "Make", icon: "sparkles", match: ["home", "make"] },
+    { id: "recipes", label: "Recipes", icon: "layers" },
     { id: "ads", label: "Ads", icon: "megaphone" },
     { id: "library", label: "Library", icon: "grid" },
   ],
   advanced: [
     { id: "studio", label: "Studio", icon: "sliders" },
+    { id: "recipes", label: "Recipes", icon: "layers" },
     { id: "ads", label: "Ads", icon: "megaphone" },
     { id: "library", label: "Library", icon: "grid" },
     { id: "apps", label: "Apps", icon: "puzzle" },
@@ -55,7 +59,7 @@ async function boot() {
   const [assets, jobs, ads] = await Promise.all([api("/api/assets?limit=500"), api("/api/jobs"), api("/api/ads")])
   for (const a of assets) state.assets.set(a.id, a)
   // Ad parts aren't in the main list but ads and jobs refer to them.
-  for (const a of await api("/api/assets?source=ad-part&limit=500")) state.assets.set(a.id, a)
+  for (const source of ["ad-part", "recipe-part"]) for (const a of await api(`/api/assets?source=${source}&limit=500`)) state.assets.set(a.id, a)
   for (const j of jobs) state.jobs.set(j.id, j)
   for (const a of ads) state.ads.set(a.id, a)
   shell()
@@ -87,7 +91,8 @@ function shell() {
 }
 
 function renderChrome() {
-  const items = NAV[mode.value]
+  // Recipes need the studio's server; the web demo leaves them out.
+  const items = NAV[mode.value].filter((it) => !(isWeb() && it.id === "recipes"))
   const active = (item) => (item.match ?? [item.id]).includes(current)
   replace(navEl, ...items.map((it) => h(`a.nav-link${active(it) ? ".active" : ""}`, { href: `#/${it.id}` }, it.label)))
   replace(
@@ -240,6 +245,8 @@ function connect() {
   relay("asset-removed", ({ id }) => state.assets.delete(id))
   relay("ad", (a) => state.ads.set(a.id, a))
   relay("ad-removed", ({ id }) => state.ads.delete(id))
+  relay("run", () => {})
+  relay("run-removed", () => {})
   relay("engine", (st) => (state.engine = st))
   es.addEventListener("apps", async () => {
     state.boot = await api("/api/bootstrap")

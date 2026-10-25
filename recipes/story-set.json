@@ -1,0 +1,17 @@
+{
+  "kino": "recipe/1",
+  "id": "story-set",
+  "title": "Story set: a still and two camera moves",
+  "blurb": "Your product in a new scene, as a 9:16 still and two five-second camera moves for Instagram Stories, Reels and TikTok.",
+  "category": "Social",
+  "tags": ["Instagram", "TikTok", "9:16"],
+  "inputs": [
+    { "id": "photo", "type": "image", "label": "Product photo", "help": "Any clear photo of the product on its own." },
+    { "id": "scene", "type": "text", "label": "The scene", "default": "on a white marble bathroom counter in soft morning light, with a folded towel and a small plant" }
+  ],
+  "steps": [
+    { "id": "set", "label": "New scene", "app": "edit", "keep": false, "values": { "image": "{{photo}}", "prompt": "Place this product {{scene}}. Keep the product exactly as it is." } },
+    { "id": "still", "label": "9:16 still", "app": "reframe", "values": { "image": "@set", "aspect": "9:16", "fit": "fit" } },
+    { "id": "moves", "label": "Camera moves", "app": "video-instant", "values": { "image": "@set", "aspect": "9:16", "duration": 5 }, "each": { "camera": ["push-in", "orbit"] } }
+  ]
+}

@@ -79,6 +79,12 @@ your choice and carries what you were doing across):
   words, and lets you edit any line before making.
 - **Advanced** is the full studio: every model, every setting, your own
   ComfyUI workflows, and the multi-angle ad studio.
+- **Recipes** turn one photo into a finished set in one go: a marketplace
+  listing (main image on white, lifestyle shots, cut-out), a Xiaohongshu
+  carousel, a story set, a festive promotion with your offer written in, a
+  sale poster, or three camera moves with no GPU at all. A recipe is a small
+  JSON file of steps, so you can import, export and write your own
+  ([docs/recipes.md](docs/recipes.md)).
 
 The user stories and flows behind both are in
 [docs/user-flows.md](docs/user-flows.md).
@@ -87,7 +93,7 @@ The user stories and flows behind both are in
 |---|---|---|
 | Image | Fast · Pro (text and posters) | Z-Image-Turbo · Qwen Image 2.1 Turbo |
 | Video | Pro with sound · Scene from text · Draft · **Instant camera move** | MiniMax H3 (FastH3, native audio) · Wan 2.2 5B · ffmpeg (free, local) |
-| Edit | Edit with words, optional second reference | Qwen Image 2.1 Edit |
+| Edit | Edit with words, optional second reference · **Reframe** to any platform size | Qwen Image 2.1 Edit · ffmpeg (free, local) |
 | Cut out | Transparent PNG | Qwen Image 2.1 background removal |
 | Talking photo | Face + voice → lip-synced video | LTX-2.3 |
 | Enhance | Upscale image · Upscale video · Smooth motion | SeedVR2 7B / 3B · FILM |
@@ -254,11 +260,13 @@ is in [docs/open-generative-ai.md](docs/open-generative-ai.md).
 npm test
 ```
 
-59 tests: every shipped workflow validates against ComfyUI 0.41's node
+62 tests: every shipped workflow validates against ComfyUI 0.41's node
 definitions and stays valid once an app fills it in; the ComfyUI and RunPod
 providers run against fake servers that implement their protocols (uploads,
 WebSocket progress, cancellation, errors); live previews reaching the browser
-throttled and unstored; This computer's engine (its zip
+throttled and unstored; recipes (the format's checks, and runs that wait,
+fan out over results and sizes, keep in-between results aside, and cancel);
+This computer's engine (its zip
 reader, resumed downloads, choosing and installing a build, the one-go
 first-run setup through a mirror, ffmpeg's fallback sources and retries) and provider,
 driving a fake sd-server through real jobs (steps, reuse, swapping packs,

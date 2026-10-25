@@ -37,6 +37,8 @@ export const styleById = (id) => state.boot?.presets.styles.find((s) => s.id ===
 export const audioById = (id) => state.boot?.presets.audio.find((a) => a.id === id)
 
 export const isDemo = () => state.boot?.provider.id === "mock"
+/** Made on the way to something else (an ad's shots, a recipe's in-between steps): kept out of the library's main view. */
+export const isPart = (a) => a.source === "ad-part" || a.source === "recipe-part"
 /** Where models run, in a word or two: Demo mode, This computer, RunPod, ComfyUI. */
 export const providerName = (p = state.boot?.provider) => ({ mock: "Demo mode", local: "This computer", runpod: "RunPod", comfy: "ComfyUI" })[p?.id] ?? "ComfyUI"
 /** "This computer" is chosen but has no engine or no model pack yet. */

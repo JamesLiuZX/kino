@@ -1,0 +1,14 @@
+{
+  "kino": "recipe/1",
+  "id": "camera-moves",
+  "title": "Three camera moves, no GPU",
+  "blurb": "Three short videos from one photo, made right here in seconds: a push-in for stories, a slow pan for the feed and a hero reveal for ads. No model and no download.",
+  "category": "Video",
+  "tags": ["Instant", "9:16", "4:5", "1:1"],
+  "inputs": [{ "id": "photo", "type": "image", "label": "Photo", "help": "A product, a place or a person." }],
+  "steps": [
+    { "id": "story", "label": "Push-in, 9:16", "app": "video-instant", "values": { "image": "{{photo}}", "camera": "push-in", "aspect": "9:16", "duration": 5 } },
+    { "id": "feed", "label": "Slow pan, 4:5", "app": "video-instant", "values": { "image": "{{photo}}", "camera": "pan-right", "aspect": "4:5", "duration": 6 } },
+    { "id": "reveal", "label": "Hero reveal, 1:1", "app": "video-instant", "values": { "image": "{{photo}}", "camera": "hero-reveal", "aspect": "1:1", "duration": 4 } }
+  ]
+}

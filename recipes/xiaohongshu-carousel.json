@@ -1,0 +1,27 @@
+{
+  "kino": "recipe/1",
+  "id": "xiaohongshu-carousel",
+  "title": "Xiaohongshu carousel",
+  "blurb": "Four scenes around your product, each a 3:4 page, ready to post as one 小红书 note.",
+  "category": "Social",
+  "tags": ["小红书", "3:4"],
+  "inputs": [{ "id": "photo", "type": "image", "label": "Product photo", "help": "Any clear photo of the product on its own." }],
+  "steps": [
+    {
+      "id": "scenes",
+      "label": "Four scenes",
+      "app": "edit",
+      "keep": false,
+      "values": { "image": "{{photo}}" },
+      "each": {
+        "prompt": [
+          "Place this product on a white marble counter in soft morning light, with a folded towel and a small plant. Keep the product exactly as it is.",
+          "Place this product on a teak side table by a window, warm sunlight and soft shadows. Keep the product exactly as it is.",
+          "Place this product among green plants in dappled sunlight, fresh and natural. Keep the product exactly as it is.",
+          "Show this product held in a hand, close up, in natural daylight. Keep the product exactly as it is."
+        ]
+      }
+    },
+    { "id": "pages", "label": "3:4 pages", "app": "reframe", "values": { "image": "@scenes", "aspect": "3:4", "fit": "fill" } }
+  ]
+}
