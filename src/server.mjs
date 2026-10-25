@@ -169,6 +169,8 @@ export function createServer({ dataDir, env = process.env, ...options } = {}) {
   r.on("POST", "/api/engine/packs/:id/cancel", ({ params }) => engine.cancel(params.id))
   r.on("DELETE", "/api/engine/packs/:id", ({ params }) => wrap400(() => engine.removePack(params.id)))
   r.on("POST", "/api/engine/install/cancel", () => engine.cancel("install"))
+  r.on("POST", "/api/engine/setup", async ({ req }) => wrap400(async () => engine.setup(await readJson(req))))
+  r.on("POST", "/api/engine/setup/cancel", () => engine.cancelSetup())
   r.on("POST", "/api/engine/stop", async () => {
     await engine.stopServer()
     return engine.status()

@@ -13,6 +13,7 @@ const DEFAULTS = {
   engineBinary: "", // your own stable-diffusion.cpp build: sd-server or its folder
   engineRelease: "", // pin an upstream release tag instead of the newest
   engineIdleMinutes: 10, // free the memory after this long without a job
+  modelMirror: "", // download Hugging Face files from a mirror instead (HF_ENDPOINT)
   comfyUrl: "",
   comfyToken: "",
   runpodEndpoint: "",
@@ -29,6 +30,7 @@ const ENV = {
   engineBinary: "KINO_SDCPP",
   engineRelease: "KINO_SDCPP_RELEASE",
   engineIdleMinutes: "KINO_ENGINE_IDLE_MINUTES",
+  modelMirror: "HF_ENDPOINT",
   comfyUrl: "COMFY_URL",
   comfyToken: "COMFY_TOKEN",
   runpodEndpoint: "RUNPOD_ENDPOINT_ID",
@@ -81,7 +83,7 @@ export class Settings {
       let value = typeof raw === "string" ? raw.trim() : raw
       if (key === "provider" && !PROVIDERS.has(value)) throw new Error(`unknown provider ${value}`)
       if (key === "engineBuild" && !BUILDS.has(value)) throw new Error(`unknown engine build ${value}`)
-      if (key === "comfyUrl" && value) value = normaliseUrl(value)
+      if ((key === "comfyUrl" || key === "modelMirror") && value) value = normaliseUrl(value)
       if (key === "runpodConcurrency") value = Math.max(1, Math.min(20, Number(value) || DEFAULTS.runpodConcurrency))
       if (key === "engineIdleMinutes") value = Math.max(1, Math.min(240, Number(value) || DEFAULTS.engineIdleMinutes))
       if (value === "" || value === this.defaults[key]) delete this.saved[key]

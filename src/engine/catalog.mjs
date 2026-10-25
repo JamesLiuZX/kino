@@ -109,11 +109,27 @@ export const FFMPEG_SOURCES = {
 /** Apps "This computer" runs with ffmpeg alone, no pack. */
 export const FFMPEG_APPS = new Set(["smooth"])
 
+/**
+ * What a first run downloads unless you pick: the quickest way to a picture
+ * (about 7 GB) and upscaling, which is tiny. The rest can come later.
+ */
+export const STARTER_PACKS = ["images-fast", "upscale"]
+
 export const packById = (id) => PACKS.find((p) => p.id === id)
 export const packForApp = (appId) => PACKS.find((p) => p.apps.includes(appId))
 
 /** Every file a pack needs, as [{key, name, url, gb}]. */
 export const packFiles = (pack) => Object.entries(pack.files).map(([key, f]) => ({ key, ...f }))
+
+/**
+ * Where to download a file from: Hugging Face's own address, or the same path
+ * on a mirror (Settings, or HF_ENDPOINT as huggingface_hub reads it) for places
+ * where Hugging Face is slow or blocked.
+ */
+export function fileUrl(file, mirror = "") {
+  const base = String(mirror || "").trim().replace(/\/+$/, "")
+  return base && file.url.startsWith(`${HF}/`) ? base + file.url.slice(HF.length) : file.url
+}
 
 // ---------------------------------------------------------------------------
 // Requests: what each app sends to sd-server's native API (/sdcpp/v1), from the

@@ -104,6 +104,7 @@ export function mountSettings(root) {
                 field("engineBinary", "Use my own build", { placeholder: "/path/to/stable-diffusion.cpp/build/bin", help: "A folder with sd-server and sd-cli, if you built stable-diffusion.cpp yourself (e.g. for ROCm or Linux on ARM)." }),
                 field("engineIdleMinutes", "Free the memory after (minutes without a job)", { type: "number" }),
                 field("engineRelease", "Pin an engine release", { placeholder: "Newest (e.g. master-1234-abcdef0)", help: "Leave empty to install the newest upstream release." }),
+                field("modelMirror", "Download models from a mirror", { placeholder: "https://huggingface.co", help: "The same files from a Hugging Face mirror, for places where Hugging Face is slow or blocked (e.g. https://hf-mirror.com). Also read from HF_ENDPOINT." }),
               ),
             )
           : null,
@@ -264,7 +265,12 @@ export function mountSettings(root) {
       busy ? progress(task) : null,
       task?.error ? h("small.engine-error", {}, task.error) : null,
       st.ffmpegError ? h("small.engine-error", {}, st.ffmpegError) : null,
-      h("p.muted.small", {}, `This computer has ${st.memoryGb} GB of memory${st.freeGb !== null ? ` and ${st.freeGb} GB free disk` : ""}. Model packs download once and stay in ${st.dir}.`),
+      h(
+        "p.muted.small",
+        {},
+        `This computer has ${st.memoryGb} GB of memory${st.freeGb !== null ? ` and ${st.freeGb} GB free disk` : ""}. Model packs download once and stay in ${st.dir}.`,
+        st.installed && st.packs.some((p) => p.ready) ? null : [" New to this? ", h("a.link", { href: "#/welcome" }, "Set it all up in one go")],
+      ),
       h("div.packs", {}, ...st.packs.map((p) => packCard(p, st))),
     )
   }

@@ -1,7 +1,7 @@
 // Boot, the top bar (navigation, Simple/Advanced, activity, status), routing
 // and the live event stream.
 
-import { h, icon, api, toast, replace } from "./ui.mjs"
+import { h, icon, api, toast, replace, store } from "./ui.mjs"
 import { state, on, emit, mode, setMode, viewState, isWeb, needsSetup, providerName } from "./state.mjs"
 import { mountCreate } from "./create.mjs"
 import { mountLibrary } from "./library.mjs"
@@ -10,6 +10,7 @@ import { mountAdsSimple } from "./ads-simple.mjs"
 import { mountApps } from "./apps.mjs"
 import { mountSettings } from "./settings.mjs"
 import { mountHome } from "./home.mjs"
+import { mountWelcome } from "./welcome.mjs"
 import { mountFlow, taskForCompose, openTask } from "./flow.mjs"
 import { activityButton, watchCompletions } from "./activity.mjs"
 
@@ -21,6 +22,7 @@ const ROUTES = {
   library: { title: "Library", mount: (el) => mountLibrary(el) },
   apps: { title: "Apps", mount: (el) => mountApps(el) },
   settings: { title: "Settings", mount: (el) => mountSettings(el) },
+  welcome: { title: "Set up", mount: (el) => mountWelcome(el) },
 }
 
 const NAV = {
@@ -60,6 +62,8 @@ async function boot() {
   connect()
   watchCompletions()
   addEventListener("hashchange", () => route())
+  // The desktop app's first run starts with setting this computer up.
+  if (needsSetup() && !store.get("welcome-seen", false) && !location.hash.replace(/^#\/?/, "")) location.hash = "#/welcome"
   route()
 }
 
@@ -107,12 +111,13 @@ function renderStatus() {
   const kind = p.error ? "bad" : p.id === "mock" || needsSetup() ? "warn" : "ok"
   const text = isWeb() ? "Web demo" : providerName(p)
   replace(statusEl, h(`span.dot.${kind}${kind === "ok" ? ".live" : ""}`), h("span.status-text", {}, text))
+  statusEl.href = needsSetup() ? "#/welcome" : "#/settings"
   statusEl.title = isWeb()
     ? "Web demo: everything runs in your browser. Cut-outs and upscaling run real models here; the others need the full studio."
     : p.id === "mock"
       ? "Demo mode: placeholder results made on this computer. Connect a GPU in Settings."
       : needsSetup()
-        ? "This computer: install the engine and a model pack in Settings."
+        ? "This computer isn't set up yet: Kino installs the engine and a model pack for you."
         : p.label
 }
 

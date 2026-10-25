@@ -16,7 +16,7 @@ import { totalmem } from "node:os"
 import { delimiter, dirname, join, relative } from "node:path"
 import { CanceledError } from "../providers/common.mjs"
 import { hasFfmpeg, recheckFfmpeg } from "../media/ffmpeg.mjs"
-import { ENGINE_REPO, FFMPEG_SOURCES, METAL_BUILD_URL, PACKS, binaryName, packById, packFiles, pickAssets } from "./catalog.mjs"
+import { ENGINE_REPO, FFMPEG_SOURCES, METAL_BUILD_URL, PACKS, STARTER_PACKS, binaryName, fileUrl, packById, packFiles, pickAssets } from "./catalog.mjs"
 import { download, fileName, remoteSize } from "./download.mjs"
 import { SdServer } from "./sdserver.mjs"
 import { unzip } from "./unzip.mjs"
@@ -38,7 +38,8 @@ export class Engine extends EventEmitter {
     this.tmpDir = join(dir, "tmp")
     this.stateFile = join(dir, "engine.json")
     this.state = readState(this.stateFile)
-    this.tasks = new Map() // "install" | pack id -> {phase, received, total, file, error, controller}
+    this.tasks = new Map() // "install" | pack id -> {phase, received, total, file, error, controller, done}
+    this.setupTask = null // first-run setup: {packs, controller}
     this.current = null // the running SdServer
     this.idleTimer = null
     this.lastEmit = 0
@@ -56,6 +57,12 @@ export class Engine extends EventEmitter {
 
   setting(key, fallback) {
     return this.settings?.get(key) ?? fallback
+  }
+
+  /** A task that's still going. A failed one stays visible for a while, but can be started again. */
+  running(id) {
+    const task = this.tasks.get(id)
+    return task && !task.error ? task : null
   }
 
   // ------------------------------------------------------------ the programs
@@ -90,11 +97,11 @@ export class Engine extends EventEmitter {
    * progress and errors show up in status() and "change" events.
    */
   install({ build } = {}) {
-    if (this.tasks.has("install")) return this.status()
+    if (this.running("install")) return this.status()
     const task = { phase: "Finding the right build", received: 0, total: 0, controller: new AbortController() }
     this.tasks.set("install", task)
     this.changed(true)
-    this.runInstall(task, build ?? this.setting("engineBuild", "auto")).then(
+    task.done = this.runInstall(task, build ?? this.setting("engineBuild", "auto")).then(
       () => this.finish("install"),
       (e) => this.finish("install", e),
     )
@@ -215,11 +222,11 @@ export class Engine extends EventEmitter {
   downloadPack(id) {
     const pack = packById(id)
     if (!pack) throw new Error(`There's no model pack called ${id}.`)
-    if (this.tasks.has(id)) return this.status()
+    if (this.running(id)) return this.status()
     const task = { phase: "Starting", received: 0, total: 0, controller: new AbortController() }
     this.tasks.set(id, task)
     this.changed(true)
-    this.runDownload(pack, task).then(
+    task.done = this.runDownload(pack, task).then(
       () => this.finish(id),
       (e) => this.finish(id, e),
     )
@@ -241,7 +248,7 @@ export class Engine extends EventEmitter {
     for (const [i, f] of missing.entries()) {
       task.file = f.name
       task.phase = `Downloading ${f.name}`
-      await download(f.url, this.modelPath(f.name), {
+      await download(this.urlOf(f), this.modelPath(f.name), {
         signal,
         onProgress: ({ received, total }) => {
           if (total && !sizes[i]) {
@@ -256,10 +263,14 @@ export class Engine extends EventEmitter {
     await this.saveState()
   }
 
+  urlOf(file) {
+    return fileUrl(file, this.setting("modelMirror", ""))
+  }
+
   async sizeOf(file, signal) {
     this.state.sizes ??= {}
     if (!this.state.sizes[file.name]) {
-      const bytes = await remoteSize(file.url, signal ? { signal } : {})
+      const bytes = await remoteSize(this.urlOf(file), signal ? { signal } : {})
       if (bytes) this.state.sizes[file.name] = bytes
     }
     return this.state.sizes[file.name] ?? Math.round((file.gb ?? 0) * 1e9)
@@ -310,6 +321,51 @@ export class Engine extends EventEmitter {
 
   packReady(pack) {
     return packFiles(pack).every((f) => existsSync(this.modelPath(f.name)))
+  }
+
+  // ------------------------------------------------------------ first run
+
+  /**
+   * Everything a first run needs, in one go: the engine if it's missing, then
+   * each pack in turn (the starter packs unless you pick). Each step is the
+   * same task Settings shows, so progress, pausing and errors read the same
+   * there. A step that fails or is paused ends the setup; running it again
+   * picks up where it stopped.
+   */
+  setup({ packs = STARTER_PACKS, build } = {}) {
+    if (this.setupTask) return this.status()
+    if (!Array.isArray(packs) || packs.some((id) => !packById(id))) throw new Error("Name the model packs to set up by id, e.g. images-fast.")
+    const task = { packs: [...new Set(packs)], controller: new AbortController() }
+    this.setupTask = task
+    this.runSetup(task, build)
+      .catch((e) => console.error("[kino] engine setup:", e.message))
+      .finally(() => {
+        this.setupTask = null
+        this.changed(true)
+      })
+    this.changed(true)
+    return this.status()
+  }
+
+  async runSetup({ packs, controller: { signal } }, build) {
+    const step = async (id, start) => {
+      if (!this.running(id)) start()
+      await this.tasks.get(id)?.done
+    }
+    if (!this.installed()) await step("install", () => this.install({ build }))
+    for (const id of packs) {
+      if (signal.aborted || !this.installed()) return
+      const pack = packById(id)
+      if (!this.packReady(pack)) await step(id, () => this.downloadPack(id))
+      if (!this.packReady(pack)) return // paused or failed: that step says why
+    }
+  }
+
+  /** Pause the setup and everything being fetched; it all resumes where it stopped. */
+  cancelSetup() {
+    this.setupTask?.controller.abort()
+    for (const task of this.tasks.values()) task.controller.abort()
+    return this.status()
   }
 
   // ------------------------------------------------------------ running
@@ -390,6 +446,8 @@ export class Engine extends EventEmitter {
       release: this.state.release ?? null,
       build: this.state.build ?? null,
       install: task("install"),
+      setup: this.setupTask ? { packs: this.setupTask.packs } : null,
+      starter: STARTER_PACKS,
       dir: this.dir,
       platform: this.platform,
       arch: this.arch,
@@ -457,6 +515,7 @@ export class Engine extends EventEmitter {
 
   /** On shutdown: stop the server and any downloads (they resume next time). */
   async close() {
+    this.setupTask?.controller.abort()
     for (const t of this.tasks.values()) t.controller.abort()
     await this.stopServer()
   }

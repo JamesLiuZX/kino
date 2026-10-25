@@ -9,8 +9,9 @@ Meta ads that have been checked against health-ad rules.
 ## Get it
 
 **Desktop app** for Mac (Apple Silicon and Intel), Windows and Linux: download
-it from [Releases](https://github.com/JamesLiuZX/kino/releases). On first run,
-**Settings → This computer** installs the engine and the model packs you pick.
+it from [Releases](https://github.com/JamesLiuZX/kino/releases). On first run
+it looks at your computer, suggests the model packs to start with, and sets up
+the engine and those packs in one go (Fast images is about 7 GB, once).
 Until the builds are signed, macOS blocks the first open: click Done, then
 System Settings → Privacy & Security → Open Anyway. Windows shows SmartScreen:
 More info → Run anyway.
@@ -31,9 +32,10 @@ whole studio before choosing where models run. Change it in **Settings**.
 
 Kino runs the models itself with [stable-diffusion.cpp](https://github.com/leejet/stable-diffusion.cpp):
 one small program with Metal on Apple Silicon, Vulkan or CUDA on PCs and a CPU
-path everywhere. No Python, no CUDA toolkit, no account. Settings → This
-computer installs it for your machine (and ffmpeg on Mac and Windows if you
-don't have it), then you download the model packs you want, once:
+path everywhere. No Python, no CUDA toolkit, no account. The first-run guide
+(`#/welcome`, or Settings → This computer piece by piece) installs it for your
+machine (and ffmpeg on Mac and Windows if you don't have it), then downloads
+the model packs you want, once:
 
 | Pack | Model | Makes | Download | Memory |
 |---|---|---|---|---|
@@ -48,7 +50,9 @@ sound), LTX-2.3 (talking photos) and SeedVR2 (video upscaling) are too big for
 most personal computers; those apps say so and run on a GPU server. The engine
 keeps one pack loaded between jobs and frees the memory after ten idle minutes.
 Packs live in the data folder (`KINO_ENGINE_DIR` moves them); **Advanced** lets
-you use your own stable-diffusion.cpp build or pin a release.
+you use your own stable-diffusion.cpp build, pin a release, or download the
+models from a Hugging Face mirror where Hugging Face is slow or blocked
+(`HF_ENDPOINT`, as huggingface_hub reads it).
 
 ## Try it in your browser
 
@@ -249,12 +253,12 @@ is in [docs/open-generative-ai.md](docs/open-generative-ai.md).
 npm test
 ```
 
-57 tests: every shipped workflow validates against ComfyUI 0.41's node
+58 tests: every shipped workflow validates against ComfyUI 0.41's node
 definitions and stays valid once an app fills it in; the ComfyUI and RunPod
 providers run against fake servers that implement their protocols (uploads,
 WebSocket progress, cancellation, errors); This computer's engine (its zip
-reader, resumed downloads, choosing and installing a build, ffmpeg's
-fallback sources and retries) and provider,
+reader, resumed downloads, choosing and installing a build, the one-go
+first-run setup through a mirror, ffmpeg's fallback sources and retries) and provider,
 driving a fake sd-server through real jobs (steps, reuse, swapping packs,
 cancel, out-of-memory, video, upscaling, one job at a time); compliance rules; caption wrapping
 and safe zones; end-to-end runs through the HTTP API, including a full ad

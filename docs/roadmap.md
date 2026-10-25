@@ -20,7 +20,7 @@ Principles, in order:
 5. **Few dependencies.** Node's standard library on the server, no front-end
    framework, no build step. Electron only for the desktop shell.
 
-## Done (this branch)
+## Done
 
 - Kino moved to its own repository, history kept.
 - **This computer**: stable-diffusion.cpp as a fourth backend, with model packs
@@ -31,28 +31,29 @@ Principles, in order:
 - **CI**: tests on every push, installers on every packaging change and on
   tags, the Metal engine build, and a weekly check that every download URL
   still answers.
+- **A first-run guide** (`#/welcome`): the desktop app opens on it until this
+  computer is set up. It shows the machine (memory, free disk, Metal or
+  Vulkan), ticks the starter packs (Fast images and Upscaling, about 7 GB) and
+  warns where a pack wants more memory than there is, then installs the engine
+  and downloads the packs in one go with progress, and hands over to a first
+  picture. "Use a GPU server" and "Look around first" (demo mode) are one click
+  away. Model files can come from a Hugging Face mirror (`HF_ENDPOINT`).
 
-### To ship 0.2.0
+### Shipping 0.2.0
 
-1. Merge, then run **Actions → Engine → Run workflow** once to publish the
-   Metal build for Apple Silicon.
-2. Check the **Engine / files** job: any model or ffmpeg URL marked GONE needs
-   its file name fixed in `src/engine/catalog.mjs` (the Hugging Face file names
-   couldn't be checked from where this branch was written).
-3. On a real Mac and a Windows PC: install the engine, download Fast images,
-   make a picture, a camera move and an ad. Windows paths inside ffmpeg
-   filters (captions) are the most likely thing to need a fix.
-4. Tag `v0.2.0`; the Desktop workflow drafts the release with the installers.
-5. GHCR: the `kino` image was first published from james-portfolio, so give
-   this repository write access under the package's settings (Manage Actions
-   access), or the image job fails with 403.
+- [x] Metal build for Apple Silicon published (`engine-metal` release).
+- [x] Every model and ffmpeg URL checked by the **Engine / files** job, sizes
+  corrected from what it measured.
+- [x] GHCR write access for this repository; the image publishes from `main`.
+- [x] `v0.2.0` tagged; the Desktop workflow drafted the release with installers
+  for Mac (Apple Silicon and Intel), Windows and Linux.
+- [ ] James: **Publish** the draft on the Releases page (drafts are private).
+- [ ] On a real Mac and a Windows PC: run the first-run guide, make a picture,
+  a camera move and an ad. Windows paths inside ffmpeg filters (captions) are
+  the most likely thing to need a fix.
 
 ## Next: first run and the everyday interface
 
-- **A first-run guide** that looks at the machine (memory, Apple Silicon or
-  graphics card) and recommends packs: "Your Mac can make pictures in about 10
-  seconds. Download Fast images (7 GB)?", then makes a first picture from a
-  sample product photo, so people see a result in minutes.
 - **Live previews while it works.** sd-server already sends a preview frame
   with each step; show it on the stage instead of only a progress ring.
 - **Each app where it runs best.** Today one backend runs everything. Let

@@ -203,6 +203,64 @@ test("engine install: finds the newest release with this machine's build, unpack
   }
 })
 
+test("first-run setup: installs the engine, then each pack in turn through a mirror, and a failed step can be run again", async () => {
+  const zip = makeZip([{ name: "sd-server", data: "#!/bin/sh\n", mode: 0o755 }, { name: "sd-cli", data: "#!/bin/sh\n", mode: 0o755 }])
+  const fetched = []
+  let failOnce = true
+  let base
+  const server = createServer((req, res) => {
+    if (req.url.startsWith("/repos/leejet/stable-diffusion.cpp/releases")) {
+      res.writeHead(200, { "Content-Type": "application/json" })
+      return res.end(JSON.stringify([{ tag_name: "master-899-bbbbbbb", assets: [{ name: "sd-master-bbbbbbb-bin-Linux-Ubuntu-24.04-x86_64-vulkan.zip", browser_download_url: `${base}/dl/linux.zip` }] }]))
+    }
+    if (req.url === "/dl/linux.zip") {
+      res.writeHead(200, { "Content-Length": zip.length })
+      return res.end(zip)
+    }
+    if (req.url.startsWith("/mirror/")) {
+      if (req.method === "GET") fetched.push(req.url)
+      if (req.method === "GET" && req.url.endsWith("/ae.safetensors") && failOnce) {
+        failOnce = false
+        res.writeHead(404)
+        return res.end()
+      }
+      res.writeHead(200, { "Content-Length": 7 })
+      return res.end(req.method === "HEAD" ? undefined : "weights")
+    }
+    res.writeHead(404)
+    res.end()
+  })
+  base = await listen(server)
+  const settled = async () => {
+    for (let i = 0; i < 750 && engine.setupTask; i++) await delay(20)
+    return engine.status()
+  }
+  const engine = new Engine({ dir: tmp(), settings: new Settings(tmp(), { HF_ENDPOINT: `${base}/mirror/` }), platform: "linux", arch: "x64", apiBase: base })
+  try {
+    assert.deepEqual(engine.status().starter, ["images-fast", "upscale"])
+    assert.throws(() => engine.setup({ packs: ["no-such-pack"] }), /by id/)
+    assert.deepEqual(engine.setup({ packs: ["images-fast"] }).setup, { packs: ["images-fast"] })
+
+    // The engine went in, then the pack stopped at the file that failed.
+    let st = await settled()
+    assert.equal(st.setup, null)
+    assert.equal(st.installed, true)
+    const fast = () => st.packs.find((p) => p.id === "images-fast")
+    assert.equal(fast().ready, false)
+    assert.match(fast().download.error, /404/)
+
+    // Straight away, not a minute later: the failed step starts again.
+    engine.setup({ packs: ["images-fast"] })
+    st = await settled()
+    assert.equal(fast().ready, true, fast().download?.error)
+    assert.equal(fast().download, null)
+    assert.ok(fetched.every((u) => u.startsWith("/mirror/")) && fetched.some((u) => u.startsWith("/mirror/leejet/Z-Image-Turbo-GGUF/resolve/main/")), "downloads came from the mirror")
+  } finally {
+    await engine.close()
+    server.close()
+  }
+})
+
 test("ffmpeg install: skips a missing build and one that won't run, keeps the first that does", { skip: process.platform === "win32" }, async () => {
   const script = (code) => `#!/bin/sh\necho "ffmpeg version fake"\nexit ${code}\n`
   const zips = {
