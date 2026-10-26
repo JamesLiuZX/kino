@@ -102,10 +102,23 @@ jobs:
         with:
           path: installers
           merge-multiple: true
+      - uses: actions/checkout@v4
+        with:
+          path: src
+      # The notes are this version's section of CHANGELOG.md, then how to open
+      # an unsigned build; GitHub's generated notes if the section is missing.
       - name: Draft the release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           ls -la installers
-          gh release create "${GITHUB_REF_NAME}" installers/* --repo "${{ github.repository }}" --draft --generate-notes \
-            --title "Kino ${GITHUB_REF_NAME#v}"
+          version="${GITHUB_REF_NAME#v}"
+          awk -v v="$version" '/^## /{ if (on) exit; on = ($2 == v) ; next } on' src/CHANGELOG.md > notes.md
+          if [ -s notes.md ]; then
+            printf '\n### Opening it the first time\n\nThe builds aren'"'"'t signed yet. **Mac:** open it, click Done, then System Settings → Privacy & Security → Open Anyway. **Windows:** More info → Run anyway.\n' >> notes.md
+            notes=(--notes-file notes.md)
+          else
+            notes=(--generate-notes)
+          fi
+          gh release create "${GITHUB_REF_NAME}" installers/* --repo "${{ github.repository }}" --draft "${notes[@]}" \
+            --title "Kino $version"

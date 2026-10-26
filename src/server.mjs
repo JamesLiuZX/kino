@@ -28,7 +28,7 @@ import { HttpError, Router, parseCookies, readBody, readJson, send, serveFile } 
 
 const ROOT = fileURLToPath(new URL("..", import.meta.url))
 const PUBLIC = join(ROOT, "public")
-const VERSION = "0.1.0"
+const VERSION = JSON.parse(readFileSync(join(ROOT, "package.json"), "utf8")).version
 
 /**
  * settingsDefaults overrides built-in defaults (the desktop app starts on

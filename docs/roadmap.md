@@ -59,18 +59,24 @@ Principles, in order:
   step), under a small progress badge. Frames go straight to the browser, at
   most four a second, and are never stored. Demo mode previews too.
 
-### Shipping 0.2.0
+### Shipping 0.3.0
 
 - [x] Metal build for Apple Silicon published (`engine-metal` release).
 - [x] Every model and ffmpeg URL checked by the **Engine / files** job, sizes
-  corrected from what it measured.
+  corrected from what it measured; it runs weekly.
 - [x] GHCR write access for this repository; the image publishes from `main`.
-- [x] `v0.2.0` tagged; the Desktop workflow drafted the release with installers
-  for Mac (Apple Silicon and Intel), Windows and Linux.
-- [ ] James: **Publish** the draft on the Releases page (drafts are private).
+- [x] `v0.2.0` tagged and drafted with installers, before the first-run guide,
+  previews, recipes and posts.
+- [x] `main` is 0.3.0, with release notes in `CHANGELOG.md` that the Desktop
+  workflow puts on the draft.
+- [ ] James: push the tag `v0.3.0` from `main`
+  (`git tag v0.3.0 origin/main && git push origin v0.3.0`). The Desktop
+  workflow drafts the release with every installer in about four minutes; then
+  **Publish** it on the Releases page (drafts are private) and delete the
+  v0.2.0 draft.
 - [ ] On a real Mac and a Windows PC: run the first-run guide, make a picture,
-  a camera move and an ad. Windows paths inside ffmpeg filters (captions) are
-  the most likely thing to need a fix.
+  a camera move, one recipe and an ad. Windows paths inside ffmpeg filters
+  (captions) are the most likely thing to need a fix.
 
 ## Next: first run and the everyday interface
 
