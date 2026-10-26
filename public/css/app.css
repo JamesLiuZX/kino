@@ -1174,7 +1174,8 @@ details.post-text p { margin: 8px 0 2px; white-space: pre-wrap; font-size: 13.5p
   .topbar { grid-template-columns: auto 1fr auto; }
   .topbar .nav { display: none; }
   .bottom-nav { position: sticky; bottom: 0; z-index: 50; display: flex; justify-content: space-around; padding: 6px 6px calc(6px + env(safe-area-inset-bottom)); background: rgba(250, 248, 244, 0.94); backdrop-filter: blur(16px); border-top: 1px solid var(--line); }
-  .bottom-nav a { display: grid; justify-items: center; gap: 3px; flex: 1; padding: 6px 4px; border-radius: 12px; font-size: 10.5px; font-weight: 550; color: var(--muted); }
+  .bottom-nav a { display: grid; justify-items: center; gap: 3px; flex: 1; min-width: 0; padding: 6px 2px; border-radius: 12px; font-size: 10.5px; font-weight: 550; color: var(--muted); }
+  .bottom-nav a span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .bottom-nav a .icon { width: 21px; height: 21px; }
   .bottom-nav a.active { color: var(--ink); }
   .bottom-nav a.active .icon { color: var(--accent); }
