@@ -22,6 +22,8 @@ const DEFAULTS = {
   anthropicKey: "",
   anthropicModel: "claude-opus-5-5",
   captionFont: "WenQuanYi Zen Hei",
+  postWebhook: "", // where due posts go: a Zapier, Make, n8n or Buffer webhook, or your own
+  postSecret: "", // signs what Kino sends there (X-Kino-Signature)
 }
 
 const ENV = {
@@ -38,9 +40,12 @@ const ENV = {
   anthropicKey: "ANTHROPIC_API_KEY",
   anthropicModel: "KINO_CLAUDE_MODEL",
   captionFont: "KINO_CAPTION_FONT",
+  postWebhook: "KINO_POST_WEBHOOK",
+  postSecret: "KINO_POST_SECRET",
 }
 
-const SECRETS = new Set(["comfyToken", "runpodKey", "anthropicKey"])
+// A webhook's URL is often its only key (Zapier, Make), so it's kept like one.
+const SECRETS = new Set(["comfyToken", "runpodKey", "anthropicKey", "postWebhook", "postSecret"])
 const PROVIDERS = new Set(["mock", "local", "comfy", "runpod"])
 const BUILDS = new Set(["auto", "cpu", "vulkan", "cuda"])
 const NUMBERS = new Set(["runpodConcurrency", "engineIdleMinutes"])
@@ -84,6 +89,7 @@ export class Settings {
       if (key === "provider" && !PROVIDERS.has(value)) throw new Error(`unknown provider ${value}`)
       if (key === "engineBuild" && !BUILDS.has(value)) throw new Error(`unknown engine build ${value}`)
       if ((key === "comfyUrl" || key === "modelMirror") && value) value = normaliseUrl(value)
+      if (key === "postWebhook" && value && !/^https?:\/\/[^\s]+$/i.test(value)) throw new Error("The webhook is a web address starting with https://.")
       if (key === "runpodConcurrency") value = Math.max(1, Math.min(20, Number(value) || DEFAULTS.runpodConcurrency))
       if (key === "engineIdleMinutes") value = Math.max(1, Math.min(240, Number(value) || DEFAULTS.engineIdleMinutes))
       if (value === "" || value === this.defaults[key]) delete this.saved[key]

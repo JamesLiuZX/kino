@@ -47,6 +47,13 @@ Principles, in order:
   on the recipe's page. Import, export, and duplicate-and-edit with checks that
   name each problem. **Reframe** (ffmpeg, instant) makes every platform size,
   and puts cut-outs on white for marketplace main images.
+- **Posts** (`#/posts`): media, words, hashtags, platforms and a time, with
+  each platform's caption limit checked. Drafts until Schedule or Send now;
+  when due, a signed webhook (multipart: fields, files and the post as JSON)
+  reaches Zapier, Make, n8n and Buffer, or, with no webhook, a reminder with
+  the words and files ready ([docs/posting.md](posting.md)). Missed times stay
+  missed. **Export packs**: every post, recipe run and finished ad downloads as
+  one zip with its words (an ad's post text and script; a run's `kino.json`).
 - **Live previews**: on This computer the picture sharpens on the stage and in
   the Studio's feed as the engine works (sd-server's preview frame for each
   step), under a small progress badge. Frames go straight to the browser, at
@@ -118,15 +125,11 @@ next is making them easy to live with:
 Making the ad is half the job; this is where Kino can go furthest past Open
 Generative AI, which has no publishing at all. In order of value for effort:
 
-1. **A posting calendar** inside Kino: each post has media, text, platform and
-   a time. Drafts by default; nothing posts without an explicit "schedule".
+1. ~~A posting calendar~~ and 3. ~~a webhook connector~~: done, see above.
 2. **Facebook Pages and Instagram** through Meta's Graph API with one token,
    reusing HerbalBath's `scripts/facebook/schedule-posts.mjs`, which already
    schedules Page posts. Meta only accepts times 10 minutes to 30 days ahead,
    which suits a weekly rhythm.
-3. **A webhook connector**: "when a post is due, send it to this URL". One
-   feature that reaches Zapier, Make, n8n and Buffer, and through them every
-   platform, with no SDKs in Kino.
 4. **Phone hand-off**: a QR code that opens the finished file on the phone over
    the local network. TikTok, Xiaohongshu and WhatsApp posting mostly happens
    on phones anyway.
@@ -134,8 +137,10 @@ Generative AI, which has no publishing at all. In order of value for effort:
    and TikTok's Content Posting API only posts publicly after an app audit, so
    they're worth doing once there are users asking.
 
-The compliance check runs before anything is scheduled, so a post that breaks
-the brand's rules or the platform's health-ad policy can't go out unattended.
+The compliance check runs before a post made from an ad is scheduled or sent,
+so words that break the brand's rules or the platforms' health-ad policies
+can't go out unattended. Next: pick a brand for any post, so every post gets
+the same check.
 
 ## Distribution and trust
 

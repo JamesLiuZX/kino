@@ -17,11 +17,13 @@ import { Engine } from "./engine/index.mjs"
 import { claudeStatus, enhancePrompt } from "./llm.mjs"
 import { AdStudio, ENGINES } from "./ads/studio.mjs"
 import { Recipes } from "./recipes.mjs"
-import { PLATFORMS } from "./ads/platforms.mjs"
+import { Posts, PLATFORMS as POST_PLATFORMS, postText } from "./posts.mjs"
+import { PLATFORMS, platformById } from "./ads/platforms.mjs"
 import { ANGLES } from "./ads/schema.mjs"
 import { renderMotion } from "./media/motion.mjs"
 import { reframeFilter, reframeSize } from "./media/reframe.mjs"
 import { hasFfmpeg, probe, run } from "./media/ffmpeg.mjs"
+import { attachment, safeNames, writeZip } from "./media/zip.mjs"
 import { HttpError, Router, parseCookies, readBody, readJson, send, serveFile } from "./http.mjs"
 
 const ROOT = fileURLToPath(new URL("..", import.meta.url))
@@ -75,15 +77,17 @@ export function createStudio({ dataDir, env = process.env, providerOverride, set
   })
   studio = new AdStudio({ store, library, jobs, settings, events })
   const recipes = new Recipes({ store, apps, jobs, library, events })
+  const posts = new Posts({ store, library, settings, events, brandFor: (post) => (post.from?.adId ? studio.brand(studio.get(post.from.adId)?.brandId ?? "") : null) })
   jobs.start()
+  posts.start()
   // Brand photos go into the library up front, so the Ad Studio can show them.
   for (const b of studio.brands()) studio.brandAssets(b).catch((e) => console.error("[kino] brand assets:", e.message))
-  return { events, store, settings, apps, library, jobs, studio, recipes, engine, provider: () => pick(settings) }
+  return { events, store, settings, apps, library, jobs, studio, recipes, posts, engine, provider: () => pick(settings) }
 }
 
 export function createServer({ dataDir, env = process.env, ...options } = {}) {
   const ctx = createStudio({ dataDir, env, ...options })
-  const { events, store, settings, apps, library, jobs, studio, recipes, engine } = ctx
+  const { events, store, settings, apps, library, jobs, studio, recipes, posts, engine } = ctx
   const token = env.KINO_TOKEN || ""
   const maxUpload = Number(env.KINO_MAX_UPLOAD_MB || 300) * 1024 * 1024
   const r = new Router()
@@ -100,6 +104,7 @@ export function createServer({ dataDir, env = process.env, ...options } = {}) {
       ffmpeg: await hasFfmpeg(),
       engine: engine.status(),
       ads: { platforms: Object.values(PLATFORMS), engines: ENGINES, angles: ANGLES, brands: studio.brands().map(brandView) },
+      posting: { platforms: POST_PLATFORMS, webhook: !!posts.webhook() },
     }
   })
 
@@ -242,6 +247,43 @@ export function createServer({ dataDir, env = process.env, ...options } = {}) {
   r.on("GET", "/api/runs/:id", ({ params }) => recipes.getRun(params.id) ?? notFound("That run is gone."))
   r.on("POST", "/api/runs/:id/cancel", ({ params }) => wrap400(async () => recipes.cancel(params.id)))
   r.on("DELETE", "/api/runs/:id", ({ params }) => ({ ok: recipes.removeRun(params.id) }))
+  r.on("GET", "/api/runs/:id/zip", async ({ params, res }) => {
+    const run = recipes.getRun(params.id) ?? notFound("That run is gone.")
+    const entries = []
+    const made = []
+    for (const s of run.recipe.steps) {
+      if (s.keep === false) continue
+      const outputs = run.steps[s.id].outputs.map((id) => library.get(id)).filter(Boolean)
+      for (const [i, a] of outputs.entries()) {
+        entries.push({ name: `${s.label ?? s.id}${outputs.length > 1 ? ` ${i + 1}` : ""}${extname(a.file)}`, path: library.pathOf(a) })
+        made.push({ step: s.label ?? s.id, app: a.appId, prompt: a.prompt || undefined, width: a.width, height: a.height, duration: a.duration || undefined })
+      }
+    }
+    if (!entries.length) throw new HttpError(400, "This run has nothing to download yet.")
+    const names = safeNames(entries.map((e) => e.name))
+    entries.forEach((e, i) => ((e.name = names[i]), (made[i].file = names[i])))
+    const words = Object.fromEntries(Object.entries(run.inputs).filter(([, v]) => typeof v === "string" && !library.get(v)))
+    entries.push({ name: "kino.json", data: JSON.stringify({ kino: "run/1", recipe: run.recipeId, title: run.title, made: new Date(run.createdAt).toISOString(), inputs: words, files: made }, null, 2) + "\n" })
+    await sendZip(res, `${run.title} ${new Date(run.createdAt).toISOString().slice(0, 10)}.zip`, entries)
+  })
+
+  // ------------------------------------------------------------ posts
+  r.on("GET", "/api/posts", () => posts.list())
+  r.on("POST", "/api/posts", async ({ req }) => wrap400(() => readJson(req).then((b) => posts.create(b))))
+  r.on("POST", "/api/posts/test", () => wrap400(() => posts.test()))
+  r.on("PUT", "/api/posts/:id", async ({ req, params }) => wrap400(() => readJson(req).then((b) => posts.update(params.id, b))))
+  r.on("POST", "/api/posts/:id/schedule", async ({ req, params }) => wrap400(() => readJson(req).then((b) => posts.schedule(params.id, b.at))))
+  r.on("POST", "/api/posts/:id/unschedule", ({ params }) => wrap400(async () => posts.unschedule(params.id)))
+  r.on("POST", "/api/posts/:id/send", ({ params }) => wrap400(() => posts.sendNow(params.id)))
+  r.on("POST", "/api/posts/:id/posted", ({ params }) => wrap400(async () => posts.markPosted(params.id)))
+  r.on("DELETE", "/api/posts/:id", ({ params }) => ({ ok: posts.remove(params.id) }))
+  r.on("GET", "/api/posts/:id/zip", async ({ params, res }) => {
+    const post = posts.get(params.id) ?? notFound("That post is gone.")
+    const media = post.media.map((id) => library.get(id)).filter(Boolean)
+    const entries = media.map((a, i) => ({ name: `${post.title || "post"}${media.length > 1 ? ` ${i + 1}` : ""}${extname(a.file)}`, path: library.pathOf(a) }))
+    entries.push({ name: "post.txt", data: `${postText(post)}\n` })
+    await sendZip(res, `${post.title || "Kino post"}.zip`, entries)
+  })
 
   // ------------------------------------------------------------ ads
   r.on("GET", "/api/brands", () => studio.brands().map(brandView))
@@ -256,6 +298,22 @@ export function createServer({ dataDir, env = process.env, ...options } = {}) {
   r.on("POST", "/api/ads/:id/render", async ({ req, params }) => wrap400(() => readJson(req).then((b) => studio.render(params.id, b))))
   r.on("POST", "/api/ads/:id/shots/:shot/retry", async ({ params }) => wrap400(async () => studio.retryShot(params.id, params.shot)))
   r.on("DELETE", "/api/ads/:id", ({ params }) => ({ ok: studio.remove(params.id) }))
+  // Every size made, the post text and the script, ready to upload anywhere.
+  r.on("GET", "/api/ads/:id/zip", async ({ params, res }) => {
+    const ad = studio.get(params.id) ?? notFound("That ad is gone.")
+    const entries = ad.renders
+      .filter((x) => x.status === "done" && library.get(x.assetId))
+      .map((x) => {
+        const a = library.get(x.assetId)
+        return { name: `${ad.brief.title} · ${platformById(x.platform).label}${extname(a.file)}`, path: library.pathOf(a) }
+      })
+    if (!entries.length) throw new HttpError(400, "Make the ad first.")
+    const copy = ad.brief.postCopy ?? {}
+    entries.push({ name: "post.txt", data: [copy.primaryText, copy.headline && `Headline: ${copy.headline}`, (copy.hashtags ?? []).join(" ")].filter(Boolean).join("\n\n") + "\n" })
+    const end = ad.brief.endCard
+    entries.push({ name: "script.txt", data: ad.brief.shots.map((s, i) => `${i + 1}. ${s.caption}${s.voiceover ? `\n   Voice: ${s.voiceover}` : ""}`).join("\n") + `\n\nEnd card: ${[end.headline, end.offer, end.cta].filter(Boolean).join(" · ")}\n` })
+    await sendZip(res, `${ad.brief.title}.zip`, entries)
+  })
 
   // ------------------------------------------------------------ auth
   r.on("POST", "/api/login", async ({ req, res }) => {
@@ -279,6 +337,8 @@ export function createServer({ dataDir, env = process.env, ...options } = {}) {
   events.on("ad-removed", (a) => broadcast("ad-removed", a))
   events.on("run", (r) => broadcast("run", r))
   events.on("run-removed", (r) => broadcast("run-removed", r))
+  events.on("post", (p) => broadcast("post", p))
+  events.on("post-removed", (p) => broadcast("post-removed", p))
   events.on("settings", (s) => broadcast("settings", s))
   events.on("apps", () => broadcast("apps", catalogue(apps)))
   engine.on("change", (st) => broadcast("engine", st))
@@ -333,6 +393,7 @@ export function createServer({ dataDir, env = process.env, ...options } = {}) {
   server.on("close", () => {
     clearInterval(heartbeat)
     for (const c of clients) c.end()
+    posts.stop()
     store.flush()
     engine.close().catch(() => {})
   })
@@ -362,6 +423,17 @@ async function wrap400(fn) {
 
 function notFound(message) {
   throw new HttpError(404, message)
+}
+
+/** Stream a zip as a download; a failure halfway closes the connection rather than leaving half a file. */
+async function sendZip(res, filename, entries) {
+  res.writeHead(200, { "Content-Type": "application/zip", "Content-Disposition": attachment(filename), "Cache-Control": "no-store" })
+  try {
+    await writeZip(res, entries)
+    res.end()
+  } catch (e) {
+    res.destroy(e)
+  }
 }
 
 function safeEqual(a, b) {

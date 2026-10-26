@@ -12,6 +12,7 @@ import { mountSettings } from "./settings.mjs"
 import { mountHome } from "./home.mjs"
 import { mountWelcome } from "./welcome.mjs"
 import { mountRecipes } from "./recipes.mjs"
+import { mountPosts, newPost } from "./posts.mjs"
 import { mountFlow, taskForCompose, openTask } from "./flow.mjs"
 import { activityButton, watchCompletions } from "./activity.mjs"
 
@@ -22,6 +23,7 @@ const ROUTES = {
   ads: { title: "Ads", mount: (el) => (mode.value === "advanced" ? mountAds(el) : mountAdsSimple(el)) },
   library: { title: "Library", mount: (el) => mountLibrary(el) },
   recipes: { title: "Recipes", mount: (el, arg) => mountRecipes(el, arg) },
+  posts: { title: "Posts", mount: (el) => mountPosts(el) },
   apps: { title: "Apps", mount: (el) => mountApps(el) },
   settings: { title: "Settings", mount: (el) => mountSettings(el) },
   welcome: { title: "Set up", mount: (el) => mountWelcome(el) },
@@ -33,12 +35,14 @@ const NAV = {
     { id: "recipes", label: "Recipes", icon: "layers" },
     { id: "ads", label: "Ads", icon: "megaphone" },
     { id: "library", label: "Library", icon: "grid" },
+    { id: "posts", label: "Posts", icon: "calendar" },
   ],
   advanced: [
     { id: "studio", label: "Studio", icon: "sliders" },
     { id: "recipes", label: "Recipes", icon: "layers" },
     { id: "ads", label: "Ads", icon: "megaphone" },
     { id: "library", label: "Library", icon: "grid" },
+    { id: "posts", label: "Posts", icon: "calendar" },
     { id: "apps", label: "Apps", icon: "puzzle" },
   ],
 }
@@ -91,8 +95,8 @@ function shell() {
 }
 
 function renderChrome() {
-  // Recipes need the studio's server; the web demo leaves them out.
-  const items = NAV[mode.value].filter((it) => !(isWeb() && it.id === "recipes"))
+  // Recipes and posts need the studio's server; the web demo leaves them out.
+  const items = NAV[mode.value].filter((it) => !(isWeb() && (it.id === "recipes" || it.id === "posts")))
   const active = (item) => (item.match ?? [item.id]).includes(current)
   replace(navEl, ...items.map((it) => h(`a.nav-link${active(it) ? ".active" : ""}`, { href: `#/${it.id}` }, it.label)))
   replace(
@@ -207,6 +211,23 @@ on("compose", (req) => {
 })
 
 on("mode", () => renderChrome())
+on("new-post", (fields) => newPost(fields))
+
+// A post with no webhook reminds you when it's due: in the studio, and as a
+// system notification if you allowed them.
+const postStatus = new Map()
+on("post", (p) => {
+  const before = postStatus.get(p.id)
+  postStatus.set(p.id, p.status)
+  if (p.status !== "due" || before === "due") return
+  const name = p.title || p.text?.split("\n")[0] || "a post"
+  toast(`Time to post: ${name}`, { kind: "ok", action: { label: "Open", run: () => (location.hash = "#/posts") }, timeout: 15000 })
+  if ("Notification" in window && Notification.permission === "granted") {
+    try {
+      new Notification("Time to post", { body: name, tag: p.id }).onclick = () => (window.focus(), (location.hash = "#/posts"))
+    } catch {}
+  }
+})
 on("open-task", ({ task, values }) => openTask(task, values))
 
 // ---------------------------------------------------------------- live updates
@@ -247,6 +268,8 @@ function connect() {
   relay("ad-removed", ({ id }) => state.ads.delete(id))
   relay("run", () => {})
   relay("run-removed", () => {})
+  relay("post", () => {})
+  relay("post-removed", () => {})
   relay("engine", (st) => (state.engine = st))
   es.addEventListener("apps", async () => {
     state.boot = await api("/api/bootstrap")

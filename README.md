@@ -85,6 +85,11 @@ your choice and carries what you were doing across):
   sale poster, or three camera moves with no GPU at all. A recipe is a small
   JSON file of steps, so you can import, export and write your own
   ([docs/recipes.md](docs/recipes.md)).
+- **Posts** take finished work out: pictures and videos, words, hashtags,
+  platforms and a time. Drafts until you press Schedule; when one is due Kino
+  sends it to your webhook (Zapier, Make, n8n, Buffer), signed if you like, or
+  reminds you to post it by hand. Every post, recipe run and ad also downloads
+  as one zip with its words ([docs/posting.md](docs/posting.md)).
 
 The user stories and flows behind both are in
 [docs/user-flows.md](docs/user-flows.md).
@@ -260,12 +265,15 @@ is in [docs/open-generative-ai.md](docs/open-generative-ai.md).
 npm test
 ```
 
-62 tests: every shipped workflow validates against ComfyUI 0.41's node
+65 tests: every shipped workflow validates against ComfyUI 0.41's node
 definitions and stays valid once an app fills it in; the ComfyUI and RunPod
 providers run against fake servers that implement their protocols (uploads,
 WebSocket progress, cancellation, errors); live previews reaching the browser
 throttled and unstored; recipes (the format's checks, and runs that wait,
-fan out over results and sizes, keep in-between results aside, and cancel);
+fan out over results and sizes, keep in-between results aside, cancel, and
+download as one zip); posting (drafts until Schedule, a due post reaching a
+webhook as fields, files and a signature, missed times staying missed, and
+reminders without a webhook); zip packs read back by Kino's own unzip;
 This computer's engine (its zip
 reader, resumed downloads, choosing and installing a build, the one-go
 first-run setup through a mirror, ffmpeg's fallback sources and retries) and provider,

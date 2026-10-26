@@ -4,7 +4,7 @@
 
 import { test } from "node:test"
 import assert from "node:assert/strict"
-import { mkdtempSync, readFileSync } from "node:fs"
+import { mkdtempSync, readFileSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { createServer } from "../src/server.mjs"
@@ -13,6 +13,7 @@ import { hasFfmpeg } from "../src/media/ffmpeg.mjs"
 import { Apps } from "../src/apps.mjs"
 import { Store } from "../src/store.mjs"
 import { recipeProblems } from "../src/recipes.mjs"
+import { listZip } from "../src/engine/unzip.mjs"
 
 const ffmpeg = await hasFfmpeg()
 const photo = readFileSync(new URL("../brands/herbalbath/product.jpg", import.meta.url))
@@ -26,7 +27,7 @@ async function start({ stepMs = 5 } = {}) {
     return { status: res.status, data: await res.json() }
   }
   const close = () => new Promise((r) => (server.closeAllConnections?.(), server.close(r)))
-  return { call, close }
+  return { base, call, close }
 }
 
 async function until(fn, ms = 30_000) {
@@ -115,6 +116,15 @@ test("recipes: a run waits for earlier steps, fans out over their results and ea
     assert.ok(run.steps.scenes.outputs.every((id) => parts.some((a) => a.id === id)))
 
     assert.equal((await s.call("/api/runs?recipe=test-chain")).data.length, 1)
+
+    // The whole set as one download, with a note of how it was made.
+    const zip = await fetch(`${s.base}/api/runs/${run.id}/zip`)
+    assert.equal(zip.headers.get("content-type"), "application/zip")
+    assert.match(zip.headers.get("content-disposition"), /attachment; filename="Test chain \d{4}-\d\d-\d\d\.zip"/)
+    const file = join(mkdtempSync(join(tmpdir(), "kino-rec-")), "set.zip")
+    writeFileSync(file, Buffer.from(await zip.arrayBuffer()))
+    const names = (await listZip(file)).map((e) => e.name)
+    assert.deepEqual(names, ["Sizes 1.jpg", "Sizes 2.jpg", "Sizes 3.jpg", "Sizes 4.jpg", "kino.json"])
     assert.equal((await s.call("/api/recipes/test-chain", { method: "DELETE" })).data.ok, true)
     assert.equal((await s.call("/api/recipes/camera-moves", { method: "DELETE" })).status, 400, "built-ins stay")
   } finally {

@@ -301,6 +301,7 @@ export function openLightbox(id, list = [id]) {
           "div.row",
           {},
           h("button.btn.grow", { onclick: () => download(asset) }, icon("download"), "Download"),
+          asset.kind !== "audio" && !state.boot.provider.web ? h("button.btn", { title: "Schedule it, or send it to your webhook", onclick: () => (close(), emit("new-post", { media: [asset.id], title: (asset.prompt || asset.name || "").slice(0, 60) })) }, icon("send"), "Post") : null,
           // The desktop app can show the file itself, where Kino keeps it.
           window.kinoDesktop ? h("button.icon-btn", { "aria-label": "Show in folder", title: "Show in folder", onclick: () => window.kinoDesktop.reveal(asset.file) }, icon("box")) : null,
           h("button.icon-btn", { "aria-label": asset.favorite ? "Unfavourite" : "Favourite", onclick: () => toggleFavorite(asset).then(render) }, icon(asset.favorite ? "heart-fill" : "heart")),

@@ -7,7 +7,7 @@ import { h, icon, api, toast, fail, store, aspectGlyph, copyText, timeAgo, fmtSe
 import { state, on, cameraById, isDemo, isWeb, fullStudioUrl, watched } from "./state.mjs"
 import { cameraThumb, SCENE_URL } from "./pickers.mjs"
 import { download, ring } from "./media.mjs"
-import { briefEditor, editBrandSheet, postText } from "./ads.mjs"
+import { briefEditor, editBrandSheet, postText, adShareButtons } from "./ads.mjs"
 import { wordsFor, friendlyError } from "./flow.mjs"
 
 const QUALITY = [
@@ -401,6 +401,7 @@ export function mountAdsSimple(root) {
         { style: { justifyContent: "flex-start" } },
         h("button.btn.primary", { type: "button", onclick: () => download(out) }, icon("download"), `Download ${(out.file?.split(".").pop() || "mp4").toUpperCase()}`),
         a.brief.postCopy?.primaryText ? h("button.btn", { type: "button", onclick: () => copyText(postText(a.brief), "Post text copied") }, icon("copy"), "Copy post text") : null,
+        ...adShareButtons(a),
         h(
           `button.chip.toggle${showSafe ? ".on" : ""}`,
           {

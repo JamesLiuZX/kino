@@ -4,7 +4,7 @@
 // small JSON files recipes are (docs/recipes.md).
 
 import { h, icon, api, upload, toast, fail, sheet, confirmDialog, fmtSeconds, timeAgo, replace } from "./ui.mjs"
-import { state, on, appById, isPart, isDemo, isWeb, needsSetup, fullStudioUrl } from "./state.mjs"
+import { state, on, emit, appById, isPart, isDemo, isWeb, needsSetup, fullStudioUrl } from "./state.mjs"
 import { assetCard } from "./media.mjs"
 
 const FORMAT_URL = "https://github.com/JamesLiuZX/kino/blob/main/docs/recipes.md"
@@ -394,6 +394,8 @@ function mountRecipe(root, id) {
         h(`span.pill.small${kind ? `.${kind}` : ""}`, {}, text),
         h("span.small.muted", {}, `${timeAgo(run.createdAt)}${Object.values(run.inputs).some((v) => typeof v === "string" && !state.assets.has(v)) ? ` · ${Object.values(run.inputs).filter((v) => typeof v === "string" && !state.assets.has(v)).join(" · ")}` : ""}`),
         h("span.spacer"),
+        kept.length && run.status !== "running" ? h("a.btn.small.ghost", { href: `/api/runs/${run.id}/zip`, download: "", title: "Every result and a note of how it was made, in one zip" }, icon("download"), "Download all") : null,
+        kept.length && run.status !== "running" ? h("button.btn.small", { type: "button", onclick: () => emit("new-post", { media: kept.slice(0, 10).map((r) => r.id), title: run.title, from: { runId: run.id } }) }, icon("send"), "Post this set") : null,
         run.status === "running"
           ? h("button.btn.small.ghost", { type: "button", onclick: () => api(`/api/runs/${run.id}/cancel`, { method: "POST" }).then(upsert, fail) }, "Cancel")
           : h("button.icon-btn.ghost.small", { type: "button", "aria-label": "Remove from this list", title: "Remove from this list (the files stay in your library)", onclick: () => removeRun(run) }, icon("x")),

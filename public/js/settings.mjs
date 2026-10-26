@@ -153,6 +153,29 @@ export function mountSettings(root) {
       h(
         "section.card",
         {},
+        h("h2", {}, "Posting"),
+        h(
+          "p.muted",
+          {},
+          "When a scheduled post is due, Kino sends it here: the words, the hashtags and the files. A Zapier, Make or n8n webhook (or Buffer through them) takes it on to Instagram, TikTok, Facebook and the rest. Without one, Kino reminds you to post by hand. ",
+          h("a.link", { href: "https://github.com/JamesLiuZX/kino/blob/main/docs/posting.md", target: "_blank", rel: "noopener" }, "How to set it up"),
+        ),
+        h(
+          "div.fields",
+          {},
+          field("postWebhook", "Webhook", { type: "password", secret: true, placeholder: "https://hooks.zapier.com/hooks/catch/…", help: "Kept like a password: for most services the address is the key." }),
+          field("postSecret", "Signing secret (optional)", { type: "password", secret: true, help: "Kino signs what it sends with it (X-Kino-Signature), so your workflow can check it came from you." }),
+        ),
+        h(
+          "div.row",
+          {},
+          h(`button.btn${testing ? ".busy" : ""}`, { type: "button", disabled: testing, onclick: saveAndTest }, "Save"),
+          state.boot.posting?.webhook ? h("button.btn.ghost", { type: "button", onclick: testWebhook }, icon("send"), "Send a test") : null,
+        ),
+      ),
+      h(
+        "section.card",
+        {},
         h("h2", {}, "Ads and captions"),
         h("div.fields", {}, field("captionFont", "Chinese caption font", { help: "Any font installed on this machine. WenQuanYi Zen Hei and Noto Sans CJK SC both work." })),
         h(
@@ -166,6 +189,19 @@ export function mountSettings(root) {
       h("p.muted.small.center", {}, `Kino ${state.boot.version} · your files stay on this machine, in the data folder next to the app.`),
     )
     renderEngine()
+  }
+
+  async function testWebhook(e) {
+    const btn = e.currentTarget
+    btn.classList.add("busy")
+    try {
+      const r = await api("/api/posts/test", { method: "POST" })
+      toast(r.ok ? `It arrived: the webhook answered ${r.status}. Nothing was posted.` : (r.error ?? `The webhook answered ${r.status}.`), { kind: r.ok ? "ok" : "error", timeout: 7000 })
+    } catch (err) {
+      fail(err)
+    } finally {
+      btn.classList.remove("busy")
+    }
   }
 
   // ---------------------------------------------------------- this computer

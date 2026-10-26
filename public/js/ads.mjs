@@ -3,7 +3,7 @@
 // Meta/TikTok health-ad rules before anything is generated.
 
 import { h, icon, api, toast, fail, confirmDialog, sheet, aspectGlyph, copyText, timeAgo, fmtSeconds, replace, store } from "./ui.mjs"
-import { state, on, cameraById } from "./state.mjs"
+import { state, on, emit, cameraById, isWeb } from "./state.mjs"
 import { openCameraSheet, cameraThumb } from "./pickers.mjs"
 import { download } from "./media.mjs"
 
@@ -236,6 +236,7 @@ export function mountAds(root) {
           {},
           out ? h("button.btn.primary", { type: "button", onclick: () => download(out) }, icon("download"), `Download ${(out.file?.split(".").pop() || "mp4").toUpperCase()}`) : null,
           ad.brief.postCopy?.primaryText ? h("button.btn", { type: "button", onclick: () => copyText(postText(ad.brief), "Post text copied") }, icon("copy"), "Copy post text") : null,
+          ...(out ? adShareButtons(ad) : []),
           out
             ? h(
                 "select.input.small",
@@ -443,6 +444,25 @@ const cfg = state.boot.ads
 
 
 export const postText = (brief) => [brief.postCopy.primaryText, brief.postCopy.hashtags?.join(" ")].filter(Boolean).join("\n\n")
+
+/** A finished ad as a draft post: its video, its post text and hashtags, for the platforms it was made for. */
+export const adPost = (ad) => ({
+  media: [ad.outputAssetId],
+  title: ad.brief.title,
+  text: ad.brief.postCopy?.primaryText ?? "",
+  hashtags: ad.brief.postCopy?.hashtags ?? [],
+  platforms: ad.brief.platform === "tiktok" ? ["tiktok"] : ["instagram", "facebook"],
+  from: { adId: ad.id },
+})
+
+/** Post it, and every size with its words as one zip (the full studio only). */
+export const adShareButtons = (ad) =>
+  isWeb()
+    ? []
+    : [
+        h("button.btn", { type: "button", title: "Schedule it, or send it to your webhook", onclick: () => emit("new-post", adPost(ad)) }, icon("send"), "Post"),
+        h("a.btn.ghost", { href: `/api/ads/${ad.id}/zip`, download: "", title: "Every size made, the post text and the script" }, icon("download"), "All sizes and text"),
+      ]
 
 /** Edits a brief in place: hook, shots, end card and post copy. */
 export function briefEditor(brief, { engine, productUrl, issues = brief.issues ?? [] }) {
