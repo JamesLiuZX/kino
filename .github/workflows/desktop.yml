@@ -6,10 +6,14 @@ name: Desktop
 # drafts a GitHub release with all of them attached.
 #
 # Signing is optional. Without these secrets the apps are unsigned (ad-hoc
-# signed on macOS) and macOS and Windows warn on first open (the README says
-# what to click):
+# signed on macOS): macOS says it can't verify Kino until you click Open Anyway
+# in Privacy & Security (the installer window says so), and Windows shows
+# SmartScreen. With them, the Mac app is signed with your Developer ID and
+# notarized by Apple, and opens like any other app (docs/signing.md):
 #   macOS:    MAC_CERT_P12 (base64 Developer ID Application .p12), MAC_CERT_PASSWORD,
-#             APPLE_ID, APPLE_APP_SPECIFIC_PASSWORD, APPLE_TEAM_ID (notarization)
+#             and for notarization either an App Store Connect API key
+#             (APPLE_API_KEY_P8 = the .p8 file's text, APPLE_API_KEY_ID, APPLE_API_ISSUER)
+#             or an Apple ID (APPLE_ID, APPLE_APP_SPECIFIC_PASSWORD, APPLE_TEAM_ID)
 #   Windows:  WIN_CERT_P12 (base64 .pfx), WIN_CERT_PASSWORD
 
 on:
@@ -64,20 +68,32 @@ jobs:
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          APPLE_API_KEY_P8: ${{ secrets.APPLE_API_KEY_P8 }}
+          APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
+          APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
           WIN_CERT_P12: ${{ secrets.WIN_CERT_P12 }}
           WIN_CERT_PASSWORD: ${{ secrets.WIN_CERT_PASSWORD }}
         run: |
           extra=()
           if [ "$RUNNER_OS" = macOS ] && [ -n "$MAC_CERT_P12" ]; then
             export CSC_LINK="$MAC_CERT_P12" CSC_KEY_PASSWORD="$MAC_CERT_PASSWORD"
-            [ -n "$APPLE_ID" ] && extra+=(-c.mac.notarize=true)
+            # electron-builder notarizes whenever one set of credentials is in
+            # the environment; the API key goes in as a file.
+            if [ -n "$APPLE_API_KEY_P8" ]; then
+              printf '%s\n' "$APPLE_API_KEY_P8" > "$RUNNER_TEMP/apple-api-key.p8"
+              export APPLE_API_KEY="$RUNNER_TEMP/apple-api-key.p8"
+              unset APPLE_ID APPLE_APP_SPECIFIC_PASSWORD
+            elif [ -z "$APPLE_ID" ]; then
+              echo "::warning::Signed but not notarized: macOS will still say it can't verify Kino. Add the notarization secrets (docs/signing.md)."
+            fi
           elif [ "$RUNNER_OS" = Windows ] && [ -n "$WIN_CERT_P12" ]; then
             export CSC_LINK="$WIN_CERT_P12" CSC_KEY_PASSWORD="$WIN_CERT_PASSWORD"
           else
             export CSC_IDENTITY_AUTO_DISCOVERY=false
             # Unsigned Macs still need an ad-hoc signature, or Apple Silicon
-            # reports the app as damaged instead of offering "Open Anyway".
-            [ "$RUNNER_OS" = macOS ] && extra+=(-c.mac.identity=- -c.mac.hardenedRuntime=false)
+            # reports the app as damaged instead of offering "Open Anyway";
+            # and the installer window says how to open it the first time.
+            [ "$RUNNER_OS" = macOS ] && extra+=(-c.mac.identity=- -c.mac.hardenedRuntime=false -c.dmg.background=desktop/dmg-background-unsigned.png)
           fi
           npx electron-builder --config desktop/electron-builder.yml ${{ matrix.target }} --publish never "${extra[@]}"
 
@@ -110,12 +126,15 @@ jobs:
       - name: Draft the release
         env:
           GH_TOKEN: ${{ github.token }}
+          MAC_SIGNED: ${{ secrets.MAC_CERT_P12 != '' }}
         run: |
           ls -la installers
           version="${GITHUB_REF_NAME#v}"
           awk -v v="$version" '/^## /{ if (on) exit; on = ($2 == v) ; next } on' src/CHANGELOG.md > notes.md
           if [ -s notes.md ]; then
-            printf '\n### Opening it the first time\n\nThe builds aren'"'"'t signed yet. **Mac:** open it, click Done, then System Settings → Privacy & Security → Open Anyway. **Windows:** More info → Run anyway.\n' >> notes.md
+            if [ "$MAC_SIGNED" != true ]; then
+              printf '\n### Opening it the first time\n\n**Mac:** Kino isn'"'"'t notarized by Apple yet, so the first time macOS says it can'"'"'t verify it. Click **Done**, open **System Settings → Privacy & Security**, scroll down and click **Open Anyway**, then confirm. After that it opens normally.\n\n**Windows:** SmartScreen may say it protected your PC: click **More info → Run anyway**.\n' >> notes.md
+            fi
             notes=(--notes-file notes.md)
           else
             notes=(--generate-notes)

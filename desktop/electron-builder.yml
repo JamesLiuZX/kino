@@ -43,8 +43,15 @@ mac:
     - target: dmg
       arch: [arm64, x64]
 
+# The installer window: Kino.app, an arrow, Applications. Unsigned builds use
+# dmg-background-unsigned.png, which also says how to open it the first time
+# (the Desktop workflow switches it). Each image has an @2x for Retina.
 dmg:
   title: Kino ${version}
+  background: desktop/dmg-background.png
+  contents:
+    - { x: 130, y: 190, type: file }
+    - { x: 410, y: 190, type: link, path: /Applications }
 
 win:
   icon: desktop/icon.png

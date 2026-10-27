@@ -12,9 +12,11 @@ Meta ads that have been checked against health-ad rules.
 it from [Releases](https://github.com/JamesLiuZX/kino/releases). On first run
 it looks at your computer, suggests the model packs to start with, and sets up
 the engine and those packs in one go (Fast images is about 7 GB, once).
-Until the builds are signed, macOS blocks the first open: click Done, then
-System Settings → Privacy & Security → Open Anyway. Windows shows SmartScreen:
-More info → Run anyway.
+Until the builds are notarized, macOS says it can't verify Kino the first time:
+click **Done**, then System Settings → Privacy & Security → **Open Anyway**
+(the installer window says so too). Windows shows SmartScreen: More info → Run
+anyway. Signing them for good takes an Apple Developer ID:
+[docs/signing.md](docs/signing.md).
 
 **From source** (Node 22+; ffmpeg recommended):
 
