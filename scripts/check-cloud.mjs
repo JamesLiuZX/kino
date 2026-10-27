@@ -73,6 +73,7 @@ async function schemaOf(id) {
 }
 
 let missing = 0
+const samples = new Set() // result files from the specs' examples, to see if a page may fetch them
 for (const id of ids) {
   const s = await schemaOf(id)
   const used = Object.entries(USED).filter(([, e]) => e.id === id).map(([app]) => app)
@@ -84,8 +85,11 @@ for (const id of ids) {
   console.log(`ok    ${id}${used.length ? `  (${used.join(", ")})` : ""}`)
   const req = new Set(s.input?.required ?? [])
   for (const [name, p] of Object.entries(s.input?.properties ?? {})) {
-    console.log(`        in   ${req.has(name) ? "*" : " "} ${name}: ${describe(p)}${p.default !== undefined ? ` = ${JSON.stringify(p.default)}` : ""}`)
+    const range = [p.minimum !== undefined ? `min ${p.minimum}` : "", p.maximum !== undefined ? `max ${p.maximum}` : ""].filter(Boolean).join(" ")
+    console.log(`        in   ${req.has(name) ? "*" : " "} ${name}: ${describe(p)}${p.default !== undefined ? ` = ${JSON.stringify(p.default)}` : ""}${range ? ` (${range})` : ""}`)
+    if (probe && /url|frames|duration|image_size/.test(name) && p.description) console.log(`               ${p.description.replace(/\s+/g, " ").slice(0, 220)}`)
   }
+  if (probe) for (const m of JSON.stringify(s.schemas).matchAll(/https:\/\/[a-z0-9.]*(?:fal\.media|falserverless)[^"\\\s]+/g)) samples.add(m[0])
   for (const [name, p] of Object.entries(s.output?.properties ?? {})) console.log(`        out    ${name}: ${describe(p)}`)
   // What Kino sends has to be what the endpoint takes.
   for (const app of used) {
@@ -107,6 +111,11 @@ const post = await get(target, { method: "POST", headers: { Origin: origin, "Con
 console.log(`cors  POST without a key: ${post.status} ${cors(post)}`)
 const status = await get(`${target}/requests/00000000-0000-0000-0000-000000000000/status`, { headers: { Origin: origin } })
 console.log(`cors  status poll: ${status.status} ${cors(status)}`)
+// Results come back as files on fal's CDN; the page fetches them to keep them.
+for (const url of [...samples].slice(0, 4)) {
+  const r = await get(url, { headers: { Origin: origin, Range: "bytes=0-15" } })
+  console.log(`cors  result file ${new URL(url).host}: ${r.status} ${cors(r)}`)
+}
 const storage = await get("https://rest.alpha.fal.ai/storage/upload/initiate?storage_type=fal-cdn-v3", { method: "OPTIONS", headers: { Origin: origin, "Access-Control-Request-Method": "POST", "Access-Control-Request-Headers": "authorization,content-type" } })
 console.log(`cors  storage preflight: ${storage.status} ${cors(storage)}`)
 
