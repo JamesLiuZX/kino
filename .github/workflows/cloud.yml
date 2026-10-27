@@ -1,0 +1,35 @@
+name: Cloud models
+
+# Kino's website runs the generative apps on fal.ai with each visitor's own
+# key. This checks, weekly and when that mapping changes, that every endpoint
+# it uses still exists and still takes what Kino sends (fal's public OpenAPI
+# specs, no key needed), and that browsers may still call fal directly.
+
+on:
+  schedule:
+    - cron: "41 3 * * 1"
+  push:
+    branches: ["main"]
+    paths: ["web/cloud.mjs", "scripts/check-cloud.mjs", ".github/workflows/cloud.yml"]
+  pull_request:
+    paths: ["web/cloud.mjs", "scripts/check-cloud.mjs", ".github/workflows/cloud.yml"]
+  workflow_dispatch:
+    inputs:
+      probe:
+        description: Also list candidate endpoints and what they take
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  endpoints:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: node scripts/check-cloud.mjs ${{ (inputs.probe || !hashFiles('web/cloud.mjs')) && '--probe' || '' }}
