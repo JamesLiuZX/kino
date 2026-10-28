@@ -23,6 +23,9 @@ on:
       url:
         description: The site to check
         default: https://jamesliuzx.com/kino/
+      probe:
+        description: More paths to trace, space-separated (e.g. /kino/index.html)
+        default: ""
 
 permissions:
   contents: read
@@ -60,3 +63,4 @@ jobs:
       - run: node scripts/check-website.mjs "${{ inputs.url || 'https://jamesliuzx.com/kino/' }}"
         env:
           PLAYWRIGHT: ${{ runner.temp }}/pw/node_modules/playwright/index.mjs
+          PROBE: ${{ inputs.probe }}

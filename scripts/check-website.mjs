@@ -23,7 +23,9 @@ const host = new URL(base).hostname
 const records = [...(await dns.resolveCname(host).catch(() => [])), ...(await dns.resolve4(host).catch(() => []))]
 const PAGES = /^185\.199\.(108|109|110|111)\.153$|\.github\.io$/
 console.log(`info  ${host} → ${records.join(", ") || "nothing"}${records.length ? (records.every((r) => PAGES.test(r)) ? " (GitHub Pages)" : records.some((r) => /vercel/.test(r) || r === "76.76.21.21") ? " (Vercel)" : "") : ""}`)
-for (const start of [new URL("/", base).href, base]) {
+// PROBE: more paths to trace the same way, e.g. "/kino/index.html /demos/quorum/".
+const probes = (process.env.PROBE ?? "").split(/\s+/).filter(Boolean).map((p) => new URL(p, base).href)
+for (const start of [new URL("/", base).href, base, ...probes]) {
   // Every hop, so a redirect that sends the page somewhere else shows.
   let url = start
   for (let hop = 0; hop < 6 && url; hop++) {
