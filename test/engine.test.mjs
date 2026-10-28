@@ -190,7 +190,8 @@ test("engine install: finds the newest release with this machine's build, unpack
     const engine = new Engine({ dir: tmp(), settings: new Settings(tmp(), {}), platform: "linux", arch: "x64", apiBase: base })
     assert.equal(engine.installed(), false)
     engine.install()
-    for (let i = 0; i < 100 && engine.tasks.has("install"); i++) await delay(20)
+    // Wait for the install itself, not a fixed time: unpacking is slower when the suite runs in parallel.
+    await engine.tasks.get("install").done
     const st = engine.status()
     assert.equal(st.install, null, st.install?.error)
     assert.equal(st.installed, true)
