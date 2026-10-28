@@ -1,6 +1,6 @@
 {
   "name": "kino",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "private": true,
   "description": "An AI image and video studio that runs on your own computer, a GPU server or RunPod, with an Ad Studio for TikTok and Meta.",
   "author": "James Liu (https://github.com/JamesLiuZX)",

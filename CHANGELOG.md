@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.3.1
 
 **Kino on the web, for real.** [jamesliuzx.com/kino](https://jamesliuzx.com/kino/)
 runs every AI app with the visitor's own fal.ai key (pasted once in Settings,

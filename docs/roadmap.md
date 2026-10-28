@@ -69,11 +69,15 @@ Principles, in order:
   previews, recipes and posts.
 - [x] `main` is 0.3.0, with release notes in `CHANGELOG.md` that the Desktop
   workflow puts on the draft.
-- [ ] James: push the tag `v0.3.0` from `main`
-  (`git tag v0.3.0 origin/main && git push origin v0.3.0`). The Desktop
-  workflow drafts the release with every installer in about four minutes; then
-  **Publish** it on the Releases page (drafts are private) and delete the
-  v0.2.0 draft.
+- [x] `v0.3.0` tagged and published (2026-10-27).
+- [x] Releasing needs no terminal: run the Desktop workflow by hand with
+  *Draft a release* ticked and it tags `main` with package.json's version and
+  drafts the release with every installer.
+- [ ] James: **Publish** the Kino 0.3.1 draft on the Releases page (drafts are
+  private; 0.3.1 has the installer window that says how to open it the first
+  time) and delete the old v0.2.0 draft.
+- [ ] James: an Apple Developer ID, so the Mac app opens with no warning
+  ([signing.md](signing.md)).
 - [ ] On a real Mac and a Windows PC: run the first-run guide, make a picture,
   a camera move, one recipe and an ad. Windows paths inside ffmpeg filters
   (captions) are the most likely thing to need a fix.

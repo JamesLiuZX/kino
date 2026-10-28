@@ -2,8 +2,10 @@ name: Desktop
 
 # Installers for the desktop app: a DMG for Apple Silicon and Intel Macs, a
 # Windows installer, and an AppImage and .deb for Linux. Every pull request
-# builds them (so packaging can't quietly break); a version tag (v0.2.0) also
-# drafts a GitHub release with all of them attached.
+# builds them (so packaging can't quietly break). A version tag (v0.3.1), or
+# running this workflow by hand with "Draft a release" ticked, also drafts a
+# GitHub release with all of them attached; run by hand, it makes the tag for
+# package.json's version itself, so releasing needs no terminal.
 #
 # Signing is optional. Without these secrets the apps are unsigned (ad-hoc
 # signed on macOS): macOS says it can't verify Kino until you click Open Anyway
@@ -22,6 +24,11 @@ on:
   pull_request:
     paths: ["desktop/**", "package.json", "package-lock.json", ".github/workflows/desktop.yml"]
   workflow_dispatch:
+    inputs:
+      release:
+        description: Draft a release of package.json's version from this commit (makes the tag)
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -108,7 +115,7 @@ jobs:
           if-no-files-found: error
 
   release:
-    if: startsWith(github.ref, 'refs/tags/v')
+    if: startsWith(github.ref, 'refs/tags/v') || inputs.release
     needs: build
     runs-on: ubuntu-latest
     permissions:
@@ -129,7 +136,18 @@ jobs:
           MAC_SIGNED: ${{ secrets.MAC_CERT_P12 != '' }}
         run: |
           ls -la installers
-          version="${GITHUB_REF_NAME#v}"
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            tag="$GITHUB_REF_NAME"
+          else
+            # Run by hand: tag this commit with package.json's version, unless that version is out already.
+            tag="v$(node -p "require('./src/package.json').version")"
+            if gh api "repos/${{ github.repository }}/git/ref/tags/$tag" > /dev/null 2>&1; then
+              echo "::error::$tag already exists. Bump the version in package.json (npm version patch --no-git-tag-version) and run this again."
+              exit 1
+            fi
+            gh api "repos/${{ github.repository }}/git/refs" -f ref="refs/tags/$tag" -f sha="$GITHUB_SHA" > /dev/null
+          fi
+          version="${tag#v}"
           awk -v v="$version" '/^## /{ if (on) exit; on = ($2 == v) ; next } on' src/CHANGELOG.md > notes.md
           if [ -s notes.md ]; then
             if [ "$MAC_SIGNED" != true ]; then
@@ -139,5 +157,5 @@ jobs:
           else
             notes=(--generate-notes)
           fi
-          gh release create "${GITHUB_REF_NAME}" installers/* --repo "${{ github.repository }}" --draft "${notes[@]}" \
+          gh release create "$tag" installers/* --repo "${{ github.repository }}" --draft "${notes[@]}" \
             --title "Kino $version"

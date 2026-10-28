@@ -53,7 +53,8 @@ the person or company publishing Kino can hold. Then, once:
    `APPLE_APP_SPECIFIC_PASSWORD` (appleid.apple.com → Sign-In and Security →
    App-Specific Passwords) and `APPLE_TEAM_ID` (developer.apple.com →
    Membership).
-5. **Release again** with a new version tag. The Desktop workflow signs the app
+5. **Release again**: bump the version, then push a version tag or run the
+   Desktop workflow by hand with *Draft a release* ticked. It signs the app
    with your Developer ID under the hardened runtime, sends it to Apple to
    notarize and staples the ticket, so the DMG opens with no warning, and the
    release notes drop the "opening it the first time" part.
