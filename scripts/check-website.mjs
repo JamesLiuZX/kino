@@ -23,16 +23,22 @@ const host = new URL(base).hostname
 const records = [...(await dns.resolveCname(host).catch(() => [])), ...(await dns.resolve4(host).catch(() => []))]
 const PAGES = /^185\.199\.(108|109|110|111)\.153$|\.github\.io$/
 console.log(`info  ${host} → ${records.join(", ") || "nothing"}${records.length ? (records.every((r) => PAGES.test(r)) ? " (GitHub Pages)" : records.some((r) => /vercel/.test(r) || r === "76.76.21.21") ? " (Vercel)" : "") : ""}`)
-for (const url of [new URL("/", base).href, base]) {
-  const r = await fetch(url, { redirect: "manual" }).catch((e) => ({ status: e.cause?.code ?? e.message, headers: new Headers() }))
-  const by = r.headers.get("x-vercel-id") ? "Vercel" : r.headers.get("x-github-request-id") ? "GitHub Pages" : (r.headers.get("server") ?? "?")
-  console.log(`info  ${url} → ${r.status} from ${by}${r.headers.get("location") ? `, to ${r.headers.get("location")}` : ""}`)
+for (const start of [new URL("/", base).href, base]) {
+  // Every hop, so a redirect that sends the page somewhere else shows.
+  let url = start
+  for (let hop = 0; hop < 6 && url; hop++) {
+    const r = await fetch(url, { redirect: "manual" }).catch((e) => ({ status: e.cause?.code ?? e.message, headers: new Headers() }))
+    const by = r.headers.get("x-vercel-id") ? "Vercel" : r.headers.get("x-github-request-id") ? "GitHub Pages" : (r.headers.get("server") ?? "?")
+    const to = r.headers.get("location")
+    console.log(`info  ${url} → ${r.status} from ${by}${to ? `, to ${to}` : ""}`)
+    url = to && r.status >= 300 && r.status < 400 ? new URL(to, url).href : null
+  }
 }
 
 // Built from main? Only the files the website is built from count.
 const INPUTS = ["public", "web", "src", "apps", "recipes", "brands", "package.json", "package-lock.json"]
 const res = await fetch(new URL("engine/seed/bootstrap.json", base), { cache: "no-store" })
-const boot = res.ok ? await res.json() : null
+const boot = res.ok ? await res.json().catch(() => null) : null
 const live = boot?.build?.commit
 if (!boot) fail(`${base} has no engine/seed/bootstrap.json (${res.status}): is the site there at all?`)
 else if (!live) fail(`the live site is ${boot.version}, built before it recorded its commit. Redeploy it: james-portfolio → Actions → Deploy to GitHub Pages → Run workflow.`)
@@ -80,7 +86,10 @@ for (const type of [chromium, webkit]) {
     if (problems.length) fail(`${name}:\n${problems.map((p) => `        ${p}`).join("\n")}`)
     else ok(`${name}: starts cleanly; “${before}” without a key, “${after}” with one; Recipes and the key card are there`)
   } catch (e) {
-    fail(`${name}: ${e.message.split("\n")[0]}${errors.length ? `\n        ${errors.join("\n        ")}` : ""}`)
+    const page = browser?.contexts()[0]?.pages()[0]
+    const where = page ? `\n        ended at ${page.url()} (“${await page.title().catch(() => "?")}”)` : ""
+    const extra = [...errors.map((x) => `error: ${x}`), ...[...missing].map((m) => `missing: ${m}`)]
+    fail(`${name}: ${e.message.split("\n")[0]}${where}${extra.length ? `\n        ${extra.join("\n        ")}` : ""}`)
   } finally {
     await browser?.close()
   }
