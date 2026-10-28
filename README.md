@@ -59,13 +59,20 @@ models from a Hugging Face mirror where Hugging Face is slow or blocked
 
 ## Try it in your browser
 
-The web demo at [jamesliuzx.com/kino](https://jamesliuzx.com/kino/) runs this
+[jamesliuzx.com/kino](https://jamesliuzx.com/kino/) is Kino on the web: this
 interface with the server swapped for an engine in the page
-([web/](web/README.md)): ad scripts, the compliance check, camera moves and the
-finished ad edit are real, and so are background removal (IS-Net) and photo
-upscaling (Real-ESRGAN), which run on the visitor's device with WebGPU or
-WebAssembly. The generative models need the full studio and a GPU, so their
-results there are labelled stand-ins.
+([web/](web/README.md)), nothing to install. Paste a
+[fal.ai key](https://fal.ai/dashboard/keys) in Settings and every AI app runs
+for real on fal.ai, with the same open models as the desktop app (Z-Image, Qwen
+Image and Qwen Image Edit, LTX-2 with sound, Wan 2.2, InfiniteTalk, SeedVR2,
+BiRefNet, FILM), billed to the visitor's own fal.ai account. The key stays in
+that browser and goes only to fal.ai. Recipes run there too, and the library,
+recipes and runs are kept in the browser between visits.
+
+Camera moves, reframing, ad scripts, the compliance check and the finished ad
+edit run in the page. Without a key, background removal (IS-Net) and photo
+upscaling (Real-ESRGAN) still run on the visitor's device with WebGPU or
+WebAssembly, and the other AI apps return labelled stand-ins.
 
 ## What's inside
 

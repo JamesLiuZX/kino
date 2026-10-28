@@ -4,7 +4,7 @@
 // small JSON files recipes are (docs/recipes.md).
 
 import { h, icon, api, upload, toast, fail, sheet, confirmDialog, fmtSeconds, timeAgo, replace } from "./ui.mjs"
-import { state, on, emit, appById, isPart, isDemo, isWeb, needsSetup, fullStudioUrl } from "./state.mjs"
+import { state, on, emit, appById, isPart, isDemo, isWeb, webCloud, needsSetup, fullStudioUrl } from "./state.mjs"
 import { assetCard } from "./media.mjs"
 
 const FORMAT_URL = "https://github.com/JamesLiuZX/kino/blob/main/docs/recipes.md"
@@ -56,12 +56,24 @@ function frames(recipe) {
   return out
 }
 
+/** The website makes the zip in the page; the studio serves it. */
+async function downloadZip(run) {
+  try {
+    const { blob, name } = await window.kinoDemo.zipRun(run.id)
+    const url = URL.createObjectURL(blob)
+    h("a", { href: url, download: name }).click()
+    setTimeout(() => URL.revokeObjectURL(url), 10_000)
+  } catch (e) {
+    fail(e)
+  }
+}
+
 function loadStatus(then) {
   if (["local", "comfy"].includes(state.boot.provider.id)) api("/api/status").then((s) => ((state.status = s), then()), () => {})
 }
 
 export function mountRecipes(root, arg) {
-  if (isWeb()) {
+  if (isWeb() && !state.boot.web?.recipes) {
     root.append(h("div.page", {}, h("div.empty-hero", {}, h("h1", {}, "Recipes run in the ", h("em", {}, "full studio")), h("p.muted", {}, "Chains of steps that turn one photo into a finished set need Kino on your computer."), h("a.btn.primary", { href: fullStudioUrl(), target: "_blank", rel: "noopener" }, icon("download"), "Get Kino"))))
     return
   }
@@ -210,6 +222,11 @@ function mountRecipe(root, id) {
         h("small", {}, ` · ${p.kept} result${p.kept === 1 ? "" : "s"}, ~${fmtSeconds(p.seconds)}`),
       ),
       isDemo() ? h("p.small.muted.center", {}, "Demo mode: placeholder results, made on this computer.") : null,
+      webCloud()
+        ? h("p.small.muted.center", {}, "The AI steps run on fal.ai with your key, billed to your fal.ai account.")
+        : isWeb()
+        ? h("p.small.muted.center", {}, "Web demo: the AI steps make stand-ins. ", h("a.link", { href: "#/settings" }, "Add your fal.ai key"), " to make them for real.")
+        : null,
     )
   }
 
@@ -394,8 +411,12 @@ function mountRecipe(root, id) {
         h(`span.pill.small${kind ? `.${kind}` : ""}`, {}, text),
         h("span.small.muted", {}, `${timeAgo(run.createdAt)}${Object.values(run.inputs).some((v) => typeof v === "string" && !state.assets.has(v)) ? ` · ${Object.values(run.inputs).filter((v) => typeof v === "string" && !state.assets.has(v)).join(" · ")}` : ""}`),
         h("span.spacer"),
-        kept.length && run.status !== "running" ? h("a.btn.small.ghost", { href: `/api/runs/${run.id}/zip`, download: "", title: "Every result and a note of how it was made, in one zip" }, icon("download"), "Download all") : null,
-        kept.length && run.status !== "running" ? h("button.btn.small", { type: "button", onclick: () => emit("new-post", { media: kept.slice(0, 10).map((r) => r.id), title: run.title, from: { runId: run.id } }) }, icon("send"), "Post this set") : null,
+        kept.length && run.status !== "running"
+          ? isWeb()
+            ? h("button.btn.small.ghost", { type: "button", title: "Every result and a note of how it was made, in one zip", onclick: () => downloadZip(run) }, icon("download"), "Download all")
+            : h("a.btn.small.ghost", { href: `/api/runs/${run.id}/zip`, download: "", title: "Every result and a note of how it was made, in one zip" }, icon("download"), "Download all")
+          : null,
+        kept.length && run.status !== "running" && !isWeb() ? h("button.btn.small", { type: "button", onclick: () => emit("new-post", { media: kept.slice(0, 10).map((r) => r.id), title: run.title, from: { runId: run.id } }) }, icon("send"), "Post this set") : null,
         run.status === "running"
           ? h("button.btn.small.ghost", { type: "button", onclick: () => api(`/api/runs/${run.id}/cancel`, { method: "POST" }).then(upsert, fail) }, "Cancel")
           : h("button.icon-btn.ghost.small", { type: "button", "aria-label": "Remove from this list", title: "Remove from this list (the files stay in your library)", onclick: () => removeRun(run) }, icon("x")),

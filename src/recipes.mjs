@@ -6,7 +6,8 @@
 // that step's pictures; `each` runs a step once per value of one setting.
 //
 // The format is small JSON, so recipes can be shared, imported and kept in
-// git. Built-in ones live in recipes/*.json:
+// git. Built-in ones live in recipes/*.json (read by recipe-files.mjs). This
+// file uses nothing from Node, so the website runs recipes with it too:
 //
 //   { "kino": "recipe/1", "id": "story-set", "title": "...", "blurb": "...",
 //     "category": "Social", "inputs": [{ "id": "photo", "type": "image", "label": "Product photo" }],
@@ -18,13 +19,8 @@
 // an earlier step made. A step with "keep": false is a means to an end: its
 // results stay out of the library's main view.
 
-import { existsSync, readdirSync, readFileSync } from "node:fs"
-import { join } from "node:path"
-import { fileURLToPath } from "node:url"
-import { newId } from "./store.mjs"
 import { ASPECTS, CAMERA, STYLES } from "./presets.mjs"
 
-const ROOT = fileURLToPath(new URL("..", import.meta.url))
 export const FORMAT = "recipe/1"
 const ID = /^[a-z0-9][a-z0-9-]{0,47}$/
 const INPUT_TYPES = new Set(["image", "video", "audio", "text", "choice"])
@@ -33,6 +29,7 @@ const MAX_STEPS = 12
 const MAX_JOBS_PER_STEP = 12
 const TERMINAL = new Set(["done", "failed", "canceled"])
 const KEEP_RUNS = 100
+const newId = (prefix) => `${prefix}_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`
 
 const whole = (value) => (typeof value === "string" ? /^\{\{([a-z0-9-]+)\}\}$/.exec(value)?.[1] ?? null : null)
 const stepRef = (value) => (typeof value === "string" ? /^@([a-z0-9-]+)$/.exec(value)?.[1] ?? null : null)
@@ -128,18 +125,15 @@ export function recipeProblems(r, apps) {
   return out
 }
 
-function loadBuiltin(dir) {
-  if (!existsSync(dir)) return []
-  return readdirSync(dir)
-    .filter((f) => f.endsWith(".json"))
-    .sort()
-    .map((f) => ({ ...JSON.parse(readFileSync(join(dir, f), "utf8")), builtin: true }))
-}
-
 export class Recipes {
-  constructor({ store, apps, jobs, library, events, dir = join(ROOT, "recipes") }) {
+  /**
+   * store: list/get/put/remove by collection ("recipes", "runs"); apps.get;
+   * jobs: enqueue/get/cancel; library.get; events: emits "run" and hears
+   * "job-finished". builtin: the recipes that ship (recipes/*.json).
+   */
+  constructor({ store, apps, jobs, library, events, builtin = [] }) {
     Object.assign(this, { store, apps, jobs, library, events })
-    this.builtin = loadBuiltin(dir)
+    this.builtin = builtin.map((r) => ({ ...r, builtin: true }))
     for (const r of this.builtin) {
       const problems = recipeProblems(r, apps)
       if (problems.length) throw new Error(`recipes/${r.id}.json: ${problems.join(" ")}`)

@@ -320,16 +320,44 @@ export function mountSettings(root) {
 /** The web demo has nothing to connect: say what runs here and where the full studio is. */
 function mountWebSettings(root) {
   const repo = fullStudioUrl()
+  const cloud = !!state.boot.web?.cloud
   const deviceEl = h("span", {}, "in your browser")
   window.kinoDemo
     ?.device?.()
     .then((d) => (deviceEl.textContent = d === "webgpu" ? "on your graphics chip (WebGPU)" : "on your processor (WebAssembly)"))
     .catch(() => {})
+  const keyInput = h("input.input", { type: "password", placeholder: cloud ? "Saved in this browser. Paste a new key to replace it." : "Paste your fal.ai key", autocomplete: "off", spellcheck: "false" })
+  // The engine reads the key when the page loads, so a reload switches it over.
+  const setKey = (key) => (window.kinoDemo.cloud.set(key), location.reload())
+  const saveKey = () => {
+    const key = keyInput.value.trim()
+    if (!key) return toast("Paste a key first.", { kind: "error" })
+    setKey(key)
+  }
   root.append(
     h(
       "div.page.settings",
       {},
-      h("header.page-head", {}, h("div", {}, h("h1", {}, "Settings"), h("p.muted", {}, "This is Kino's web demo: the real interface, running entirely in your browser."))),
+      h("header.page-head", {}, h("div", {}, h("h1", {}, "Settings"), h("p.muted", {}, cloud ? "Kino on the web, with the AI apps running on fal.ai through your own key." : "Kino on the web: the real interface, in your browser. Add a fal.ai key to make everything for real."))),
+      h(
+        "section.card",
+        {},
+        h("h2", {}, "Make it for real with fal.ai"),
+        h("p.muted", {}, "The AI apps run on fal.ai with the same open models as the desktop studio: Z-Image and Qwen Image for pictures, Qwen Image Edit, LTX-2 and Wan 2.2 for video, InfiniteTalk for talking photos, SeedVR2 for upscaling. fal.ai bills your account per result; Kino adds nothing on top."),
+        h(
+          "label.field",
+          {},
+          h("span", {}, "fal.ai key", cloud ? h("small.muted", {}, " (saved)") : null),
+          keyInput,
+          h("small.muted", {}, "Kept in this browser and sent only to fal.ai. A key made just for Kino is easy to revoke later. ", h("a.link", { href: "https://fal.ai/dashboard/keys", target: "_blank", rel: "noopener" }, "Get a key"), "."),
+        ),
+        h(
+          "div.row",
+          {},
+          h("button.btn.primary", { type: "button", onclick: saveKey }, icon("check"), cloud ? "Replace the key" : "Save the key"),
+          cloud ? h("button.btn.ghost", { type: "button", onclick: () => setKey("") }, "Forget the key") : null,
+        ),
+      ),
       h(
         "section.card",
         {},
@@ -337,16 +365,18 @@ function mountWebSettings(root) {
         h(
           "ul.readiness",
           {},
-          h("li.ok", {}, icon("check"), h("strong", {}, "Real: "), "camera moves, the ad script, the compliance check, and the edit with captions, end card and music."),
-          h("li.ok", {}, icon("check"), h("strong", {}, "Real AI, on this device: "), "background removal (IS-Net) and photo upscaling (Real-ESRGAN), run ", deviceEl, ". Each model downloads once, the first time you use it."),
-          h("li.ok", {}, icon("check"), h("strong", {}, "Private: "), "photos and recordings you add stay in this tab. Nothing is uploaded, and nothing is saved: reload to start fresh."),
-          h("li.bad", {}, icon("info"), h("strong", {}, "Stand-ins: "), "generated images, AI video, photo edits, talking photos and video upscaling. Those need the models on a GPU."),
+          cloud
+            ? h("li.ok", {}, icon("check"), h("strong", {}, "Real AI, on fal.ai: "), "images, photo edits, cut-outs, video with sound, talking photos, upscaling and smoother motion, with your key.")
+            : h("li.ok", {}, icon("check"), h("strong", {}, "Real AI, on this device: "), "background removal (IS-Net) and photo upscaling (Real-ESRGAN), run ", deviceEl, ". Each model downloads once, the first time you use it."),
+          h("li.ok", {}, icon("check"), h("strong", {}, "Real, in your browser: "), "camera moves, reframing for each platform, the ad script, the compliance check, and the edit with captions, end card and music."),
+          h("li.ok", {}, icon("check"), h("strong", {}, "Kept: "), "your library, recipes and runs stay in this browser between visits. Nothing goes to Kino's site. Clearing the site's data clears them, so download what you want to keep."),
+          cloud ? null : h("li.bad", {}, icon("info"), h("strong", {}, "Stand-ins: "), "generated images, AI video, photo edits, talking photos and video upscaling, until you add a fal.ai key above."),
         ),
         h(
           "div.row",
           {},
-          h("a.btn.primary", { href: repo, target: "_blank", rel: "noopener" }, icon("download"), "Get Kino on GitHub"),
-          h("a.btn", { href: `${repo}/runpod`, target: "_blank", rel: "noopener" }, icon("cpu"), "Connect a GPU (RunPod guide)"),
+          h("a.btn", { href: repo, target: "_blank", rel: "noopener" }, icon("download"), "Get the desktop app"),
+          h("a.btn.ghost", { href: `${repo}/runpod`, target: "_blank", rel: "noopener" }, icon("cpu"), "Run it on your own GPU"),
         ),
       ),
       h("p.muted.small.center", {}, "Made by ", h("a.link", { href: "https://jamesliuzx.com/projects/kino", target: "_blank", rel: "noopener" }, "James Liu"), " · read the case study"),

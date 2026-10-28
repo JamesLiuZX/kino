@@ -1,13 +1,19 @@
-// Kino's web demo: the real interface, with the server replaced by this file.
-// It answers the same /api routes from memory, so every screen works as it
-// does in the studio. Ad scripts and compliance use the server's own modules,
-// camera moves and the ad edit render on a canvas, background removal and
-// photo upscaling run real models on the visitor's device (ai.mjs), and nothing
-// leaves the page: uploads and recordings stay in this tab. The other models
-// (images, video, edits, voice) need the full studio and a GPU, so their
-// results here are stand-ins and say so.
+// Kino on the web: the real interface, with the server replaced by this file.
+// It answers the same /api routes in the page, so every screen works as it
+// does in the studio. Ad scripts, compliance and recipes use the server's own
+// modules; camera moves, reframing and the ad edit render on a canvas;
+// background removal and photo upscaling run real models on the visitor's
+// device (ai.mjs). With the visitor's own fal.ai key (cloud.mjs) the
+// generative apps run for real on fal; without one, their results are
+// stand-ins and say so. The library, jobs, ads and recipe runs are kept in this
+// browser (keep.mjs), and nothing is uploaded except, with a key, the files a
+// job sends to fal.
 
-import { ruleEnhance } from "./lib/prompt.js"
+import { ruleEnhance, imagePrompt, wanPrompt, talkingPrompt } from "./lib/prompt.js"
+import { audioById, sizeFor } from "./lib/presets.js"
+import { Recipes } from "./lib/recipes.js"
+import * as C from "./cloud.js"
+import * as K from "./keep.js"
 import { templateBrief } from "./lib/ads/templates.js"
 import { checkBrief } from "./lib/ads/compliance.js"
 import { normalizeBrief, briefProblems } from "./lib/ads/schema.js"
@@ -19,6 +25,7 @@ const SEED = new URL("./seed/", import.meta.url)
 const boot = { value: null }
 const brands = new Map()
 const assets = new Map()
+const files = new Map() // asset id -> { blob, poster }: what the browser keeps of each file
 const jobs = new Map()
 const ads = new Map()
 let models = { models: [] }
@@ -38,7 +45,8 @@ class HttpError extends Error {
     this.status = status
   }
 }
-const FULL = "That needs the full studio. This web demo runs in your browser; download Kino to connect a GPU and your own workflows."
+const FULL = "That needs the full studio. This website runs in your browser; download Kino to connect a GPU and your own workflows."
+const TERMINAL = new Set(["done", "failed", "canceled"])
 
 // ---------------------------------------------------------------- seed
 
@@ -55,8 +63,41 @@ async function load() {
   const abs = (u) => (u ? new URL(u, SEED).href : u)
   for (const a of state.assets) assets.set(a.id, { ...a, url: abs(a.url), thumbUrl: abs(a.thumbUrl), createdAt: a.createdAt + shift })
   for (const ad of state.ads) ads.set(ad.id, { ...ad, createdAt: ad.createdAt + shift })
+  applyCloud(b)
+  await restore()
+  await initRecipes(await get("recipes.json").catch(() => []))
 }
 const ready = load()
+
+/** With a fal.ai key the generative apps are real: the interface says so everywhere it looks. */
+function applyCloud(b) {
+  const on = !!C.cloudKey()
+  b.web = { ...b.web, cloud: on, recipes: true, keeps: true }
+  if (!on) return
+  b.provider = { id: "fal", label: "fal.ai · your key", web: true }
+  for (const app of b.apps) {
+    if (!C.ENDPOINTS[app.id]) continue
+    app.model = C.ENDPOINTS[app.id].model
+    b.web.local[app.id] = { note: "", cloud: true }
+  }
+}
+
+/** What this browser kept from earlier visits; anything cut off mid-way is marked so. */
+async function restore() {
+  const [keptAssets, keptJobs, keptAds] = await Promise.all([K.all("assets"), K.all("jobs"), K.all("ads")])
+  for (const { blob, poster, ...meta } of keptAssets) {
+    if (!blob) continue
+    const url = URL.createObjectURL(blob)
+    files.set(meta.id, { blob, poster: poster ?? null })
+    assets.set(meta.id, { ...meta, url, thumbUrl: poster ? URL.createObjectURL(poster) : meta.kind === "image" ? url : null })
+  }
+  const cut = "The page closed before it finished. Try again."
+  keptJobs.sort((a, b) => b.createdAt - a.createdAt)
+  for (const job of keptJobs.slice(0, 300)) jobs.set(job.id, TERMINAL.has(job.status) ? job : { ...job, status: "failed", message: "Failed", error: cut })
+  for (const job of keptJobs.slice(300)) K.remove("jobs", job.id)
+  for (const ad of keptAds) ads.set(ad.id, ad.status === "making" || ad.status === "rendering" ? { ...ad, status: "failed", error: cut } : ad)
+  if (keptAssets.length) K.persist()
+}
 
 // Apps that run for real here, for the interface to say so.
 async function localApps() {
@@ -82,12 +123,18 @@ function listAssets(q) {
   const text = (q.get("q") || "").toLowerCase()
   const limit = Number(q.get("limit")) || 120
   return [...assets.values()]
-    .filter((a) => (source ? a.source === source : a.source !== "ad-part"))
+    .filter((a) => (source ? a.source === source : a.source !== "ad-part" && a.source !== "recipe-part"))
     .filter((a) => !kind || a.kind === kind)
     .filter((a) => q.get("favorite") !== "1" || a.favorite)
     .filter((a) => !text || `${a.prompt ?? ""} ${a.name ?? ""}`.toLowerCase().includes(text))
     .sort((a, b) => b.createdAt - a.createdAt)
     .slice(0, limit)
+}
+
+/** What the browser keeps of an asset: everything but its page-only URLs, plus the files. */
+function keepAsset(a) {
+  const f = files.get(a.id)
+  if (f) K.put("assets", { ...a, url: null, thumbUrl: null, blob: f.blob, poster: f.poster })
 }
 
 function addAsset(out, meta) {
@@ -112,6 +159,8 @@ function addAsset(out, meta) {
     ...meta,
   }
   assets.set(id, asset)
+  files.set(id, { blob: out.blob, poster: out.poster ?? null })
+  keepAsset(asset)
   send("asset", asset)
   return asset
 }
@@ -154,7 +203,10 @@ function probe(url, kind) {
 // ---------------------------------------------------------------- jobs
 
 const queue = []
-let running = null
+const running = new Map() // job id -> { job, controller, lane }
+// Work on the page (canvas, in-browser models) goes one at a time; fal runs several at once.
+const LANES = { page: 1, cloud: 4 }
+const laneOf = (job) => (C.cloudKey() && C.ENDPOINTS[job.appId] ? "cloud" : "page")
 
 function enqueue({ appId, values = {}, count = 1, meta = {} }) {
   const app = appId === "ad-render" ? { id: "ad-render", tool: "ad", label: "Ad edit", model: "Kino editor", output: "video", seconds: 20, params: [] } : appById(appId)
@@ -181,29 +233,38 @@ function enqueue({ appId, values = {}, count = 1, meta = {} }) {
 
 function update(job, changes) {
   Object.assign(job, changes)
+  if (TERMINAL.has(job.status)) K.put("jobs", job)
   send("job", job)
 }
 
-let lastProgress = 0
+const lastSent = new Map()
 function progress(job, p, message) {
   job.progress = Math.max(job.progress ?? 0, Math.min(0.99, p))
   if (message) job.message = message
   const now = Date.now()
-  if (now - lastProgress > 180) {
-    lastProgress = now
+  if (now - (lastSent.get(job.id) ?? 0) > 180) {
+    lastSent.set(job.id, now)
     send("job", job)
   }
 }
 
-async function pump() {
-  if (running) return
-  const id = queue.shift()
-  if (!id) return
-  const job = jobs.get(id)
-  if (!job || job.status !== "queued") return pump()
+/** Start every queued job whose lane has room. */
+function pump() {
+  for (const id of [...queue]) {
+    const job = jobs.get(id)
+    if (job?.status === "queued") {
+      const lane = laneOf(job)
+      if ([...running.values()].filter((r) => r.lane === lane).length >= LANES[lane]) continue
+      start(job, lane)
+    }
+    queue.splice(queue.indexOf(id), 1)
+  }
+}
+
+async function start(job, lane) {
   const controller = new AbortController()
-  running = { job, controller }
-  update(job, { status: "running", startedAt: Date.now(), progress: 0.01, message: "Starting", provider: "web" })
+  running.set(job.id, { job, controller, lane })
+  update(job, { status: "running", startedAt: Date.now(), progress: 0.01, message: "Starting", provider: lane === "cloud" ? "fal" : "web" })
   try {
     const outputs = await run(job, controller.signal)
     const parents = ["image", "image2", "endImage", "audio", "video", "media"].map((k) => job.values[k]).filter((x) => x && assets.has(x))
@@ -227,7 +288,8 @@ async function pump() {
     if (e.canceled || controller.signal.aborted) update(job, { status: "canceled", message: "Canceled", finishedAt: Date.now() })
     else update(job, { status: "failed", message: "Failed", error: e.message, finishedAt: Date.now() })
   } finally {
-    running = null
+    running.delete(job.id)
+    lastSent.delete(job.id)
     onJobFinished(job)
     pump()
   }
@@ -245,9 +307,15 @@ async function modelPhase(job, signal, seconds = 1.6) {
 }
 
 async function run(job, signal) {
+  if (laneOf(job) === "cloud") return runCloud(job, signal)
   const v = job.values
   const onProgress = (p) => progress(job, 0.6 + p * 0.39, "Rendering in your browser")
   switch (job.appId) {
+    case "reframe": {
+      progress(job, 0.4, "Reframing")
+      const transparent = /png|webp/.test(assets.get(v.image)?.mime ?? "")
+      return [{ ...(await R.reframe({ image: src(v.image), aspect: v.aspect, fit: v.fit, transparent })), real: true }]
+    }
     case "image-fast":
     case "image-pro": {
       if (job.stage === "still") {
@@ -332,6 +400,68 @@ async function run(job, signal) {
   }
 }
 
+// ---------------------------------------------------------------- fal.ai
+
+const helpers = {
+  imagePrompt,
+  wanPrompt,
+  talkingPrompt,
+  audioPhrase: (id) => audioById(id)?.phrase,
+  size: (aspect, megapixels) => sizeFor(aspect ?? "1:1", megapixels, 64),
+  async file(id) {
+    const a = assets.get(id)
+    if (!a) throw new Error("A file this needs was deleted from the library.")
+    const blob = files.get(id)?.blob ?? (await (await fetch(a.url)).blob())
+    if (blob.size > 30e6) throw new Error(`That ${a.kind} is over 30 MB, too big to send from the website. The desktop app takes it.`)
+    return new Promise((resolve, reject) => {
+      const r = new FileReader()
+      r.onload = () => resolve(r.result)
+      r.onerror = () => reject(r.error)
+      r.readAsDataURL(blob)
+    })
+  },
+}
+
+/** A generative app on fal.ai with the visitor's key; the results come back into the library. */
+async function runCloud(job, signal) {
+  // An ad's scene is its shot description, in the ad's shape.
+  const values = job.stage === "still" ? { ...job.values, prompt: job.visual ?? job.values.prompt } : job.values
+  const begun = Date.now()
+  const expected = Math.max(10, job.estimate || 30) * 1000
+  const out = await C.runOnFal({
+    appId: job.appId,
+    values,
+    key: C.cloudKey(),
+    h: helpers,
+    signal,
+    onProgress: (message) => progress(job, 0.04 + 0.86 * Math.min(0.97, (Date.now() - begun) / expected), message),
+  })
+  if (!out.files.length) throw new Error("fal.ai finished but sent nothing back.")
+  progress(job, 0.92, "Bringing it back")
+  return Promise.all(out.files.map((f) => fetched(f, out, signal)))
+}
+
+const EXT = { "image/png": "png", "image/jpeg": "jpg", "image/webp": "webp", "video/mp4": "mp4", "video/webm": "webm", "video/quicktime": "mov", "audio/mpeg": "mp3", "audio/wav": "wav" }
+
+async function fetched(f, { model, sound }, signal) {
+  let res
+  try {
+    res = await fetch(f.url, { signal })
+  } catch (e) {
+    if (signal.aborted) throw R.canceled()
+    throw new Error(`Couldn't bring the result back from fal.ai (${e.message}).`)
+  }
+  if (!res.ok) throw new Error(`Couldn't bring the result back from fal.ai (${res.status}).`)
+  const blob = await res.blob()
+  const mime = blob.type && blob.type !== "application/octet-stream" ? blob.type : (f.mime ?? "image/png")
+  const kind = mime.startsWith("video") ? "video" : mime.startsWith("audio") ? "audio" : "image"
+  const url = URL.createObjectURL(blob)
+  const meta = await probe(url, kind)
+  const poster = kind === "video" ? await R.posterOf(url) : null
+  URL.revokeObjectURL(url)
+  return { blob, mime, ext: EXT[mime] ?? mime.split("/")[1] ?? "bin", ...meta, poster, model, real: true, hasAudio: kind === "video" && sound }
+}
+
 /**
  * Run one of the in-browser models. If this browser can't (no WebAssembly,
  * not enough memory, the model didn't download), the job carries on with a
@@ -353,13 +483,14 @@ function cancel(id) {
   const job = jobs.get(id)
   if (!job) return { ok: false }
   if (job.status === "queued") update(job, { status: "canceled", message: "Canceled", finishedAt: Date.now() })
-  else if (running?.job.id === id) running.controller.abort()
+  else running.get(id)?.controller.abort()
   return clone(job)
 }
 
 // ---------------------------------------------------------------- ads
 
 function emitAd(ad) {
+  K.put("ads", ad)
   send("ad", ad)
 }
 
@@ -448,6 +579,7 @@ function retryShot(id, shotId) {
 }
 
 function onJobFinished(job) {
+  if (job.runId) for (const fn of finishHooks) fn(job)
   if (!job.adId) return
   const ad = ads.get(job.adId)
   if (!ad) return
@@ -508,6 +640,7 @@ async function renderAdJob(job, signal) {
 
 function removeAd(id) {
   if (!ads.delete(id)) return { ok: false }
+  K.remove("ads", id)
   send("ad-removed", { id })
   return { ok: true }
 }
@@ -531,22 +664,144 @@ function saveBrand(id, changes) {
   return view
 }
 
+// ---------------------------------------------------------------- recipes
+
+// The studio's own recipe engine (lib/recipes.js), with its runs and imported
+// recipes kept in this browser.
+const kept = { recipes: new Map(), runs: new Map() }
+const recipeStore = {
+  list: (c, filter) => [...kept[c].values()].filter((r) => !filter || filter(r)),
+  get: (c, id) => kept[c].get(id) ?? null,
+  put: (c, row) => (kept[c].set(row.id, row), K.put(c, row), row),
+  remove(c, id) {
+    const had = kept[c].delete(id)
+    if (had) K.remove(c, id)
+    return had
+  },
+}
+const finishHooks = new Set()
+let recipes = null
+
+async function initRecipes(builtin) {
+  for (const c of ["recipes", "runs"]) {
+    for (const row of await K.all(c)) kept[c].set(row.id, c === "runs" && row.status === "running" ? { ...row, status: "failed", error: "The page closed before it finished." } : row)
+  }
+  try {
+    recipes = new Recipes({
+      store: recipeStore,
+      apps: { get: (id) => appById(id) },
+      jobs: { enqueue, get: (id) => jobs.get(id), cancel },
+      library: { get: (id) => assets.get(id) },
+      events: { on: (type, fn) => type === "job-finished" && finishHooks.add(fn), emit: (type, data) => send(type, data) },
+      builtin,
+    })
+  } catch (e) {
+    console.warn("[kino] recipes are off:", e.message)
+  }
+}
+
+function useRecipes() {
+  if (!recipes) throw new HttpError(400, FULL)
+  return recipes
+}
+
+/** The engine's own errors are a 400 with its sentence, as the server sends them. */
+function plain(fn) {
+  try {
+    return fn()
+  } catch (e) {
+    throw e instanceof HttpError ? e : new HttpError(400, e.message)
+  }
+}
+
+// A run's results as one zip, made in the page: stored entries (pictures and
+// videos are compressed already), plus kino.json of how each was made.
+const CRC = new Uint32Array(256).map((_, n) => {
+  let c = n
+  for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1
+  return c >>> 0
+})
+const crc32 = (bytes) => {
+  let c = ~0 >>> 0
+  for (let i = 0; i < bytes.length; i++) c = CRC[(c ^ bytes[i]) & 0xff] ^ (c >>> 8)
+  return ~c >>> 0
+}
+
+async function zipBlob(entries) {
+  const enc = new TextEncoder()
+  const now = new Date()
+  const time = (now.getHours() << 11) | (now.getMinutes() << 5) | (now.getSeconds() >> 1)
+  const date = (Math.max(0, now.getFullYear() - 1980) << 9) | ((now.getMonth() + 1) << 5) | now.getDate()
+  const parts = []
+  const central = []
+  const seen = new Map()
+  let offset = 0
+  for (const e of entries) {
+    const n = (seen.get(e.name) ?? 0) + 1
+    seen.set(e.name, n)
+    const name = enc.encode(n > 1 ? e.name.replace(/(\.[^.]+)?$/, `-${n}$1`) : e.name)
+    const data = new Uint8Array(await e.blob.arrayBuffer())
+    const crc = crc32(data)
+    const head = new DataView(new ArrayBuffer(30))
+    for (const [at, v, size] of [[0, 0x04034b50, 4], [4, 20, 2], [6, 0x0800, 2], [10, time, 2], [12, date, 2], [14, crc, 4], [18, data.length, 4], [22, data.length, 4], [26, name.length, 2]]) size === 4 ? head.setUint32(at, v, true) : head.setUint16(at, v, true)
+    parts.push(head, name, data)
+    central.push({ name, crc, size: data.length, offset })
+    offset += 30 + name.length + data.length
+  }
+  let directory = 0
+  for (const c of central) {
+    const head = new DataView(new ArrayBuffer(46))
+    for (const [at, v, size] of [[0, 0x02014b50, 4], [4, 0x0314, 2], [6, 20, 2], [8, 0x0800, 2], [12, time, 2], [14, date, 2], [16, c.crc, 4], [20, c.size, 4], [24, c.size, 4], [28, c.name.length, 2], [38, (0o100644 << 16) >>> 0, 4], [42, c.offset, 4]]) size === 4 ? head.setUint32(at, v, true) : head.setUint16(at, v, true)
+    parts.push(head, c.name)
+    directory += 46 + c.name.length
+  }
+  const end = new DataView(new ArrayBuffer(22))
+  end.setUint32(0, 0x06054b50, true)
+  end.setUint16(8, central.length, true)
+  end.setUint16(10, central.length, true)
+  end.setUint32(12, directory, true)
+  end.setUint32(16, offset, true)
+  parts.push(end)
+  return new Blob(parts, { type: "application/zip" })
+}
+
+async function zipRun(id) {
+  const run = useRecipes().getRun(id)
+  if (!run) throw new HttpError(404, "That run is gone.")
+  const entries = []
+  const made = []
+  for (const s of run.recipe.steps) {
+    if (s.keep === false) continue
+    const outs = run.steps[s.id].outputs.map((x) => assets.get(x)).filter(Boolean)
+    for (const [i, a] of outs.entries()) {
+      const name = `${(s.label ?? s.id).replace(/[\\/:*?"<>|]+/g, "-")}${outs.length > 1 ? ` ${i + 1}` : ""}.${a.file.split(".").pop()}`
+      entries.push({ name, blob: files.get(a.id)?.blob ?? (await (await fetch(a.url)).blob()) })
+      made.push({ file: name, step: s.label ?? s.id, app: a.appId, model: a.model, prompt: a.prompt || undefined, width: a.width, height: a.height })
+    }
+  }
+  if (!entries.length) throw new HttpError(400, "This run has nothing to download yet.")
+  const words = Object.fromEntries(Object.entries(run.inputs).filter(([, v]) => typeof v === "string" && !assets.has(v)))
+  entries.push({ name: "kino.json", blob: new Blob([JSON.stringify({ kino: "run/1", recipe: run.recipeId, title: run.title, made: new Date(run.createdAt).toISOString(), inputs: words, files: made }, null, 2) + "\n"]) })
+  return { blob: await zipBlob(entries), name: `${run.title} ${new Date(run.createdAt).toISOString().slice(0, 10)}.zip` }
+}
+
 // ---------------------------------------------------------------- routes
 
 const ROUTES = [
   ["GET", /^\/api\/bootstrap$/, () => boot.value],
-  ["GET", /^\/api\/status$/, () => ({ ok: true, label: "Web demo: everything runs in your browser", apps: {} })],
+  ["GET", /^\/api\/status$/, () => ({ ok: true, label: C.cloudKey() ? "Kino on the web: AI on fal.ai with your key" : "Web demo: everything runs in your browser", apps: {} })],
   ["GET", /^\/api\/assets$/, (m, q) => listAssets(q)],
   ["PATCH", /^\/api\/assets\/([^/]+)$/, ([, id], q, body) => {
     const a = assets.get(id)
     if (!a) throw new HttpError(404, "That file is gone.")
     for (const k of ["favorite", "name"]) if (body?.[k] !== undefined) a[k] = body[k]
+    keepAsset(a)
     send("asset", a)
     return a
   }],
   ["DELETE", /^\/api\/assets\/([^/]+)$/, ([, id]) => {
     const ok = assets.delete(id)
-    if (ok) send("asset-removed", { id })
+    if (ok) (files.delete(id), K.remove("assets", id), send("asset-removed", { id }))
     return { ok }
   }],
   ["GET", /^\/api\/jobs$/, () => [...jobs.values()].sort((a, b) => b.createdAt - a.createdAt).slice(0, 200)],
@@ -560,7 +815,7 @@ const ROUTES = [
   }],
   ["DELETE", /^\/api\/jobs\/([^/]+)$/, ([, id]) => {
     const job = jobs.get(id)
-    if (!job || running?.job.id === id) return { ok: false }
+    if (!job || running.has(id)) return { ok: false }
     jobs.delete(id)
     send("job-removed", { id })
     return { ok: true }
@@ -591,6 +846,15 @@ const ROUTES = [
   ["POST", /^\/api\/ads\/([^/]+)\/shots\/([^/]+)\/retry$/, ([, id, shot]) => retryShot(id, shot)],
   ["DELETE", /^\/api\/ads\/([^/]+)$/, ([, id]) => removeAd(id)],
   ["POST", /^\/api\/login$/, () => ({ ok: true })],
+  ["GET", /^\/api\/recipes$/, () => useRecipes().list()],
+  ["GET", /^\/api\/recipes\/([^/]+)$/, ([, id]) => useRecipes().get(decodeURIComponent(id)) ?? (() => { throw new HttpError(404, "That recipe is gone.") })()],
+  ["POST", /^\/api\/recipes$/, (m, q, b) => plain(() => useRecipes().save(b))],
+  ["DELETE", /^\/api\/recipes\/([^/]+)$/, ([, id]) => plain(() => ({ ok: useRecipes().remove(decodeURIComponent(id)) }))],
+  ["POST", /^\/api\/recipes\/([^/]+)\/run$/, ([, id], q, b) => plain(() => useRecipes().start(decodeURIComponent(id), b?.inputs ?? {}))],
+  ["GET", /^\/api\/runs$/, (m, q) => useRecipes().runs({ recipeId: q.get("recipe") || undefined })],
+  ["GET", /^\/api\/runs\/([^/]+)$/, ([, id]) => useRecipes().getRun(id) ?? (() => { throw new HttpError(404, "That run is gone.") })()],
+  ["POST", /^\/api\/runs\/([^/]+)\/cancel$/, ([, id]) => plain(() => useRecipes().cancel(id))],
+  ["DELETE", /^\/api\/runs\/([^/]+)$/, ([, id]) => ({ ok: useRecipes().removeRun(id) })],
 ]
 
 async function api(path, { method = "GET", body } = {}) {
@@ -608,4 +872,7 @@ window.kinoDemo = {
   upload,
   device: AI.device,
   subscribe: (fn) => (listeners.add(fn), () => listeners.delete(fn)),
+  // The visitor's fal.ai key: set or forgotten here, it takes effect on reload.
+  cloud: { on: () => !!C.cloudKey(), set: (key) => C.setCloudKey(key) },
+  zipRun: async (id) => (await ready, zipRun(id)),
 }

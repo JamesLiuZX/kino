@@ -40,11 +40,13 @@ export const isDemo = () => state.boot?.provider.id === "mock"
 /** Made on the way to something else (an ad's shots, a recipe's in-between steps): kept out of the library's main view. */
 export const isPart = (a) => a.source === "ad-part" || a.source === "recipe-part"
 /** Where models run, in a word or two: Demo mode, This computer, RunPod, ComfyUI. */
-export const providerName = (p = state.boot?.provider) => ({ mock: "Demo mode", local: "This computer", runpod: "RunPod", comfy: "ComfyUI" })[p?.id] ?? "ComfyUI"
+export const providerName = (p = state.boot?.provider) => ({ mock: "Demo mode", local: "This computer", runpod: "RunPod", comfy: "ComfyUI", fal: "fal.ai" })[p?.id] ?? "ComfyUI"
 /** "This computer" is chosen but has no engine or no model pack yet. */
 export const needsSetup = () => state.boot?.provider.id === "local" && !(state.engine ?? state.boot?.engine)?.packs?.some((p) => p.ready && (state.engine ?? state.boot.engine).installed)
 /** The web demo: the interface running on an in-browser engine (kino/web). */
 export const isWeb = () => !!state.boot?.provider.web
+/** The website with the visitor's own fal.ai key: the generative apps run for real there. */
+export const webCloud = () => isWeb() && !!state.boot?.web?.cloud
 export const fullStudioUrl = () => state.boot?.web?.repo ?? "https://github.com/JamesLiuZX/kino"
 /** In the web demo, the apps that run for real on this device (camera moves, cut-outs, upscaling). */
 export const webLocal = (appId) => (isWeb() ? state.boot?.web?.local?.[appId] ?? null : null)

@@ -17,6 +17,7 @@ import { Engine } from "./engine/index.mjs"
 import { claudeStatus, enhancePrompt } from "./llm.mjs"
 import { AdStudio, ENGINES } from "./ads/studio.mjs"
 import { Recipes } from "./recipes.mjs"
+import { builtinRecipes } from "./recipe-files.mjs"
 import { Posts, PLATFORMS as POST_PLATFORMS, postText } from "./posts.mjs"
 import { PLATFORMS, platformById } from "./ads/platforms.mjs"
 import { ANGLES } from "./ads/schema.mjs"
@@ -76,7 +77,7 @@ export function createStudio({ dataDir, env = process.env, providerOverride, set
     },
   })
   studio = new AdStudio({ store, library, jobs, settings, events })
-  const recipes = new Recipes({ store, apps, jobs, library, events })
+  const recipes = new Recipes({ store, apps, jobs, library, events, builtin: builtinRecipes() })
   const posts = new Posts({ store, library, settings, events, brandFor: (post) => (post.from?.adId ? studio.brand(studio.get(post.from.adId)?.brandId ?? "") : null) })
   jobs.start()
   posts.start()

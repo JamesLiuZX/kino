@@ -3,7 +3,7 @@
 // results to pick up from.
 
 import { h, icon, replace } from "./ui.mjs"
-import { state, on, cameraById, isDemo, isPart, isWeb, needsSetup, setMode } from "./state.mjs"
+import { state, on, cameraById, isDemo, isPart, isWeb, webCloud, needsSetup, setMode } from "./state.mjs"
 import { cameraThumb } from "./pickers.mjs"
 import { openLightbox, actionsFor } from "./media.mjs"
 import { wordsFor } from "./flow.mjs"
@@ -21,7 +21,7 @@ export function mountHome(root) {
 
   function renderHero() {
     const p = state.boot.provider
-    const status = isWeb() ? "Web demo · runs in your browser, nothing to install" : p.id === "mock" ? "Demo mode · try anything, nothing to set up" : p.id === "local" ? (needsSetup() ? "This computer · not set up yet" : "Running on this computer") : `Connected · ${p.id === "runpod" ? "RunPod" : "ComfyUI"}`
+    const status = webCloud() ? "Kino on the web · AI on fal.ai with your key" : isWeb() ? "Web demo · runs in your browser, nothing to install" : p.id === "mock" ? "Demo mode · try anything, nothing to set up" : p.id === "local" ? (needsSetup() ? "This computer · not set up yet" : "Running on this computer") : `Connected · ${p.id === "runpod" ? "RunPod" : "ComfyUI"}`
     replace(
       hero,
       h(
@@ -143,7 +143,7 @@ export function mountHome(root) {
     replace(
       tasksEl,
       card({ id: "ad", href: "#/ads", featured: true, title: ["A video", "ad"], blurb: "From your product photo to a finished TikTok or Reels ad: script, shots, captions and an end card, checked against Meta and TikTok health-ad rules.", visual: adVisual, meta: [{ label: "About a minute" }, { label: "Free in Quick mode", kind: "ok" }], d: 0.4 }),
-      isWeb() ? null : card({ id: "recipes", href: "#/recipes", title: ["A whole", "set"], blurb: "Recipes: a listing set, a 小红书 carousel or a festive promo from one photo, every size in one go.", visual: setVisual, meta: [{ label: "6 recipes" }], d: 0.43 }),
+      isWeb() && !state.boot.web?.recipes ? null : card({ id: "recipes", href: "#/recipes", title: ["A whole", "set"], blurb: "Recipes: a listing set, a 小红书 carousel or a festive promo from one photo, every size in one go.", visual: setVisual, meta: [{ label: "6 recipes" }], d: 0.43 }),
       card({ id: "photo", href: "#/make/photo", title: ["Product photo,", "new scene"], blurb: "Your real product, somewhere new. The label stays as it is.", visual: photoVisual, d: 0.46 }),
       card({ id: "animate", href: "#/make/animate", title: ["Bring it", "to life"], blurb: "Twenty camera moves, previewed on your photo.", visual: animateVisual, d: 0.52 }),
       card({ id: "change", href: "#/make/change", title: ["Change a", "photo"], blurb: "New background or new light, with words.", visual: changeVisual, d: 0.58 }),

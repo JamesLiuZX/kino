@@ -7,6 +7,7 @@
 import { cameraById } from "./lib/presets.js"
 import { wrap, typeScale, endCardPlan } from "./lib/ads/captions.js"
 import { platformById } from "./lib/ads/platforms.js"
+import { reframeSize } from "./lib/media/reframe.js"
 
 const FPS = 30
 const SCALE = 0.5 // web renders at half the server's size: smooth to record, sharp on a phone
@@ -363,6 +364,58 @@ export async function softCutout({ image }) {
   ctx.fillStyle = m
   ctx.fillRect(0, 0, W, H)
   return { blob: await toBlob(c, "image/png"), mime: "image/png", ext: "png", width: W, height: H }
+}
+
+/**
+ * The same picture in another shape (the studio's Reframe app, on a canvas):
+ * crop to fill, the whole picture over a blurred copy, or on white.
+ * Transparent cut-outs land on white unless cropped.
+ */
+export async function reframe({ image, aspect = "4:5", fit = "fill", transparent = false }) {
+  const img = await loadImage(image)
+  const { width: W, height: H } = reframeSize({ width: img.naturalWidth, height: img.naturalHeight, aspect, fit })
+  const c = canvas(W, H)
+  const ctx = c.getContext("2d")
+  ctx.imageSmoothingQuality = "high"
+  const draw = (scale, filter = "none") => {
+    const w = img.naturalWidth * scale
+    const h = img.naturalHeight * scale
+    ctx.filter = filter
+    ctx.drawImage(img, (W - w) / 2, (H - h) / 2, w, h)
+  }
+  const coverScale = Math.max(W / img.naturalWidth, H / img.naturalHeight)
+  if (fit !== "fill") {
+    ctx.fillStyle = "#fff"
+    ctx.fillRect(0, 0, W, H)
+    if (fit === "fit") draw(coverScale, `blur(${Math.round(Math.min(W, H) / 24)}px)`)
+  }
+  draw(fit === "fill" ? coverScale : Math.min(W / img.naturalWidth, H / img.naturalHeight))
+  const png = fit === "fill" && transparent
+  return { blob: await toBlob(c, png ? "image/png" : "image/jpeg", 0.92), mime: png ? "image/png" : "image/jpeg", ext: png ? "png" : "jpg", width: W, height: H }
+}
+
+/** A frame of a video for its thumbnail, or null if this browser can't. */
+export function posterOf(url) {
+  return new Promise((resolve) => {
+    const v = document.createElement("video")
+    const give = (blob) => (clearTimeout(t), v.removeAttribute("src"), resolve(blob))
+    const t = setTimeout(() => give(null), 8000)
+    v.muted = true
+    v.preload = "auto"
+    v.crossOrigin = "anonymous"
+    v.onloadeddata = () => (v.currentTime = Math.min(0.5, (v.duration || 1) / 3))
+    v.onseeked = async () => {
+      try {
+        const c = canvas(v.videoWidth, v.videoHeight)
+        c.getContext("2d").drawImage(v, 0, 0)
+        give(await toBlob(c, "image/jpeg", 0.82))
+      } catch {
+        give(null)
+      }
+    }
+    v.onerror = () => give(null)
+    v.src = url
+  })
 }
 
 export async function upscale({ image, scale = "2x" }) {

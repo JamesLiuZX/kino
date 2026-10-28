@@ -1,5 +1,21 @@
 # Changelog
 
+## Unreleased
+
+**Kino on the web, for real.** [jamesliuzx.com/kino](https://jamesliuzx.com/kino/)
+runs every AI app with the visitor's own fal.ai key (pasted once in Settings,
+kept in that browser, sent only to fal.ai), on the same open models as the
+desktop app: Z-Image, Qwen Image and Qwen Image Edit, LTX-2 with sound, Wan 2.2,
+InfiniteTalk, SeedVR2, BiRefNet and FILM. Up to four run at once. Recipes run
+on the web too and download as a zip, and the library, recipes and runs are
+kept in the browser between visits. A weekly check makes sure fal still has
+every model and takes what Kino sends.
+
+**Opening the Mac app the first time.** Until there's a Developer ID, the
+installer window and the release notes say how to open an app Apple hasn't
+checked; once the signing secrets are added, the Desktop workflow signs and
+notarizes it ([docs/signing.md](docs/signing.md)).
+
 ## 0.3.0
 
 **Set up in one go.** The desktop app opens on a first-run guide: it looks at

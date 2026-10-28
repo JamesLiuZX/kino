@@ -1,9 +1,11 @@
 #!/usr/bin/env node
-// Builds Kino's web demo: the real interface (public/) plus the in-browser
-// engine (web/engine.mjs, web/render.mjs, web/ai.mjs), the server modules it
-// shares (presets, prompts, ad templates, compliance, captions), the brand
-// files, the seed library, and the two models it runs on the visitor's device
-// with ONNX Runtime Web. The output is static: any web host serves it, e.g.
+// Builds Kino's website: the real interface (public/) plus the in-browser
+// engine (web/engine.mjs, render.mjs, ai.mjs, cloud.mjs for fal.ai, keep.mjs
+// for what the browser keeps), the server modules it shares (presets, prompts,
+// recipes, reframe, ad templates, compliance, captions), the app catalogue and
+// built-in recipes as they are in this checkout, the brand files, the seed
+// library, and the two models it runs on the visitor's device with ONNX
+// Runtime Web. The output is static: any web host serves it, e.g.
 // `node web/build.mjs ../public/kino --strict` for the portfolio's GitHub Pages
 // site. --strict fails the build when the models or the runtime are missing;
 // without it the demo is built with stand-ins in their place.
@@ -11,8 +13,13 @@
 import { createHash } from "node:crypto"
 import { existsSync } from "node:fs"
 import { cp, mkdir, readdir, readFile, rm, stat, writeFile } from "node:fs/promises"
+import { mkdtempSync } from "node:fs"
+import { tmpdir } from "node:os"
 import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
+import { Apps, catalogue } from "../src/apps.mjs"
+import { Store } from "../src/store.mjs"
+import { builtinRecipes } from "../src/recipe-files.mjs"
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..")
 const args = process.argv.slice(2)
@@ -26,7 +33,7 @@ const ORT_DIST = join(ROOT, "node_modules", "onnxruntime-web", "dist")
 const ORT_FILES = ["ort.webgpu.min.mjs", "ort.wasm.min.mjs", "ort-wasm-simd-threaded.asyncify.mjs", "ort-wasm-simd-threaded.asyncify.wasm", "ort-wasm-simd-threaded.mjs", "ort-wasm-simd-threaded.wasm"]
 
 // Shared with the server; each must stay free of Node built-ins.
-const SHARED = ["presets.mjs", "prompt.mjs", "ads/schema.mjs", "ads/compliance.mjs", "ads/platforms.mjs", "ads/captions.mjs", "ads/templates.mjs"]
+const SHARED = ["presets.mjs", "prompt.mjs", "recipes.mjs", "media/reframe.mjs", "ads/schema.mjs", "ads/compliance.mjs", "ads/platforms.mjs", "ads/captions.mjs", "ads/templates.mjs"]
 
 // GitHub Pages and some hosts serve .mjs with the wrong type; ship .js.
 const toJs = (src) => src.replace(/((?:from|import)\s*\(?\s*["'])(\.{1,2}\/[^"']+?)\.mjs(["'])/g, "$1$2.js$3")
@@ -58,10 +65,19 @@ await writeFile(join(out, "index.html"), html)
 await writeJs(join(ROOT, "web", "engine.mjs"), join(out, "engine", "engine.js"))
 await writeJs(join(ROOT, "web", "render.mjs"), join(out, "engine", "render.js"))
 await writeJs(join(ROOT, "web", "ai.mjs"), join(out, "engine", "ai.js"))
+await writeJs(join(ROOT, "web", "cloud.mjs"), join(out, "engine", "cloud.js"))
+await writeJs(join(ROOT, "web", "keep.mjs"), join(out, "engine", "keep.js"))
 for (const f of SHARED) await writeJs(join(ROOT, "src", f), join(out, "engine", "lib", f.replace(/\.mjs$/, ".js")))
 
-// Seed library and brand profiles.
+// Seed library and brand profiles. The app catalogue and the version are
+// this checkout's, so the website never lags the studio's apps; the recipes
+// are the built-in ones.
 await cp(join(ROOT, "web", "seed"), join(out, "engine", "seed"), { recursive: true })
+const seedBoot = JSON.parse(await readFile(join(ROOT, "web", "seed", "bootstrap.json"), "utf8"))
+const cat = catalogue(new Apps({ store: new Store(mkdtempSync(join(tmpdir(), "kino-web-"))) }))
+const version = JSON.parse(await readFile(join(ROOT, "package.json"), "utf8")).version
+await writeFile(join(out, "engine", "seed", "bootstrap.json"), JSON.stringify({ ...seedBoot, version, tools: cat.tools, apps: cat.apps, presets: cat.presets }))
+await writeFile(join(out, "engine", "seed", "recipes.json"), JSON.stringify(builtinRecipes()))
 await mkdir(join(out, "engine", "seed", "brands"), { recursive: true })
 for (const f of await readdir(join(ROOT, "brands"))) {
   if (f.endsWith(".json")) await cp(join(ROOT, "brands", f), join(out, "engine", "seed", "brands", f))

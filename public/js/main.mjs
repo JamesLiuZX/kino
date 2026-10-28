@@ -2,7 +2,7 @@
 // and the live event stream.
 
 import { h, icon, api, toast, replace, store } from "./ui.mjs"
-import { state, on, emit, mode, setMode, viewState, isWeb, needsSetup, providerName } from "./state.mjs"
+import { state, on, emit, mode, setMode, viewState, isWeb, webCloud, needsSetup, providerName } from "./state.mjs"
 import { mountCreate } from "./create.mjs"
 import { mountLibrary } from "./library.mjs"
 import { mountAds } from "./ads.mjs"
@@ -95,8 +95,9 @@ function shell() {
 }
 
 function renderChrome() {
-  // Recipes and posts need the studio's server; the web demo leaves them out.
-  const items = NAV[mode.value].filter((it) => !(isWeb() && (it.id === "recipes" || it.id === "posts")))
+  // Posts need the studio running to send them; the website leaves them out
+  // (and recipes too, on a build that can't run them).
+  const items = NAV[mode.value].filter((it) => !(isWeb() && (it.id === "posts" || (it.id === "recipes" && !state.boot.web?.recipes))))
   const active = (item) => (item.match ?? [item.id]).includes(current)
   replace(navEl, ...items.map((it) => h(`a.nav-link${active(it) ? ".active" : ""}`, { href: `#/${it.id}` }, it.label)))
   replace(
@@ -118,11 +119,13 @@ function renderStatus() {
   if (!statusEl) return
   const p = state.boot.provider
   const kind = p.error ? "bad" : p.id === "mock" || needsSetup() ? "warn" : "ok"
-  const text = isWeb() ? "Web demo" : providerName(p)
+  const text = webCloud() ? "fal.ai · your key" : isWeb() ? "Web demo" : providerName(p)
   replace(statusEl, h(`span.dot.${kind}${kind === "ok" ? ".live" : ""}`), h("span.status-text", {}, text))
   statusEl.href = needsSetup() ? "#/welcome" : "#/settings"
-  statusEl.title = isWeb()
-    ? "Web demo: everything runs in your browser. Cut-outs and upscaling run real models here; the others need the full studio."
+  statusEl.title = webCloud()
+    ? "Kino on the web: the AI apps run on fal.ai with your own key; camera moves, reframing and edits run in your browser."
+    : isWeb()
+    ? "Web demo: everything runs in your browser. Cut-outs and upscaling run real models here; add your fal.ai key in Settings to run the rest for real."
     : p.id === "mock"
       ? "Demo mode: placeholder results made on this computer. Connect a GPU in Settings."
       : needsSetup()

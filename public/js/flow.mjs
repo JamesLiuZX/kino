@@ -5,7 +5,7 @@
 // as the Studio, so switching to Advanced keeps your work.
 
 import { h, icon, api, upload, toast, fail, store, aspectGlyph, fmtSeconds, replace } from "./ui.mjs"
-import { state, on, appById, cameraById, styleById, isDemo, isPart, isWeb, needsSetup, webLocal, fullStudioUrl, watched, viewState } from "./state.mjs"
+import { state, on, appById, cameraById, styleById, isDemo, isPart, isWeb, webCloud, needsSetup, webLocal, watched, viewState } from "./state.mjs"
 import { cameraThumb, openCameraSheet, STYLE_SWATCH } from "./pickers.mjs"
 import { openLightbox, ring, download } from "./media.mjs"
 import { openRecorder } from "./recorder.mjs"
@@ -552,8 +552,10 @@ export function mountFlow(root, taskId) {
         "p.cta-note",
         {},
         isWeb()
-          ? app?.gpu && !local
-            ? [icon("info"), "Web demo: a stand-in made in your browser. ", h("a.link", { href: fullStudioUrl(), target: "_blank", rel: "noopener" }, "Get the full studio")]
+          ? local?.cloud
+            ? [icon("bolt"), `Runs on fal.ai with your key · ${app.model}`]
+            : app?.gpu && !local
+            ? [icon("info"), "Web demo: a stand-in made in your browser. ", h("a.link", { href: "#/settings" }, "Add your fal.ai key"), " to make it for real."]
             : [icon("check"), `Runs in your browser, for real${local?.note ? `. ${local.note}` : ""}`]
           : isDemo()
           ? [icon("info"), "Demo mode: a placeholder is made on this computer. ", h("a.link", { href: "#/settings" }, "Connect a GPU")]

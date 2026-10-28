@@ -5,7 +5,16 @@
 //   node scripts/check-cloud.mjs            a report; exit 1 if an endpoint Kino uses is gone
 //   node scripts/check-cloud.mjs --probe    also list candidate endpoints and their inputs
 
-const USED = (await import("../web/cloud.mjs").catch(() => ({ ENDPOINTS: {} }))).ENDPOINTS ?? {}
+const { ENDPOINTS = {} } = await import("../web/cloud.mjs").catch(() => ({}))
+
+// What Kino sends, from web/cloud.mjs itself: each app's request for sample
+// values, in every variation the app has (with and without a photo...).
+const h = { imagePrompt: (p) => p, wanPrompt: ({ prompt }) => prompt, talkingPrompt: ({ prompt }) => prompt || "x", audioPhrase: () => "ambient", size: () => ({ width: 1024, height: 1024 }), file: async () => "data:image/png;base64,AA==" }
+const SAMPLES = { "video-draft": [{ prompt: "x", image: "a" }, { prompt: "x" }], edit: [{ prompt: "x", image: "a", image2: "b" }] }
+const uses = []
+for (const [app, e] of Object.entries(ENDPOINTS)) {
+  for (const v of SAMPLES[app] ?? [{ prompt: "x", image: "a", audio: "b", video: "c", seed: 1 }]) uses.push({ app, id: e.endpoint(v), keys: Object.keys(await e.input(v, h)) })
+}
 const CANDIDATES = [
   "fal-ai/z-image/turbo",
   "fal-ai/qwen-image",
@@ -38,7 +47,7 @@ const CANDIDATES = [
   "fal-ai/esrgan",
 ]
 const probe = process.argv.includes("--probe")
-const ids = [...new Set([...Object.values(USED).map((e) => e.id), ...(probe ? CANDIDATES : [])])]
+const ids = [...new Set([...uses.map((u) => u.id), ...(probe ? CANDIDATES : [])])]
 
 async function get(url, init = {}) {
   for (let attempt = 0; attempt < 3; attempt++) {
@@ -76,7 +85,7 @@ let missing = 0
 const samples = new Set() // result files from the specs' examples, to see if a page may fetch them
 for (const id of ids) {
   const s = await schemaOf(id)
-  const used = Object.entries(USED).filter(([, e]) => e.id === id).map(([app]) => app)
+  const used = [...new Set(uses.filter((u) => u.id === id).map((u) => u.app))]
   if (s.status !== 200) {
     console.log(`${used.length ? "GONE" : "none"}  ${id}${used.length ? `  (Kino uses it for ${used.join(", ")})` : ""}  ${s.status}`)
     if (used.length) missing++
@@ -91,11 +100,12 @@ for (const id of ids) {
   }
   if (probe) for (const m of JSON.stringify(s.schemas).matchAll(/https:\/\/[a-z0-9.]*(?:fal\.media|falserverless)[^"\\\s]+/g)) samples.add(m[0])
   for (const [name, p] of Object.entries(s.output?.properties ?? {})) console.log(`        out    ${name}: ${describe(p)}`)
-  // What Kino sends has to be what the endpoint takes.
-  for (const app of used) {
-    const unknown = (USED[app].sends ?? []).filter((k) => !(k in (s.input?.properties ?? {})))
-    if (unknown.length) {
-      console.log(`GONE  ${app} sends ${unknown.join(", ")}, which ${id} doesn't take`)
+  // What Kino sends has to be what the endpoint takes, required fields included.
+  for (const u of uses.filter((x) => x.id === id)) {
+    const unknown = u.keys.filter((k) => !(k in (s.input?.properties ?? {})))
+    const absent = (s.input?.required ?? []).filter((k) => !u.keys.includes(k))
+    if (unknown.length || absent.length) {
+      console.log(`GONE  ${u.app} → ${id}: ${[unknown.length ? `sends ${unknown.join(", ")}, which it doesn't take` : "", absent.length ? `leaves out ${absent.join(", ")}, which it needs` : ""].filter(Boolean).join("; ")}`)
       missing++
     }
   }
