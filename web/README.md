@@ -14,7 +14,7 @@ Real-ESRGAN for upscaling) and the rest are labelled stand-ins.
 | `keep.mjs` | The library (with its files), jobs, ads, recipes and runs in IndexedDB, so they're there next visit. If the browser won't keep anything (a private window), the page works and forgets on reload. |
 | `render.mjs` | Camera moves (the instant mode's maths from `src/media/motion.mjs`), the ad edit (the server's caption and end-card layout from `src/ads/captions.mjs`, plus a soft music bed), talking photos and labelled stand-ins for AI stills, all recorded with MediaRecorder. |
 | `ai.mjs` | The two in-browser models, on ONNX Runtime Web: WebGPU when the device has it, WebAssembly otherwise, and WebAssembly again if the graphics chip fails or stalls mid-run. Models download once, with progress, into the browser's cache. Cut-outs feed "Remove the background" and put an uploaded product into "Product photo, new scene"; upscaling works in overlapping tiles. |
-| `models/` | Not in git. `cutout.onnx` (IS-Net general use, Apache-2.0: 178 MB cut to its final mask with 8-bit per-channel weights, 47 MB) and `upscale.onnx` (Real-ESRGAN general x4v3, BSD-3-Clause, with its default denoise strength baked in, 5 MB), made from the projects' releases by `scripts/web-models.py`, which checks each against its original. |
+| `models/` | Not in git. `cutout.onnx` (IS-Net general use, Apache-2.0: 178 MB cut to its final mask with 8-bit per-channel weights, 47 MB) and `upscale.onnx` (Real-ESRGAN general x4v3, BSD-3-Clause, with its default denoise strength baked in, 5 MB), made from the projects' releases by `scripts/web-models.py`, which checks each against its original. The *Web models* workflow publishes them as the `web-models` release, and `build.mjs --fetch-models` downloads them from there, so any host can build the site. |
 | `build.mjs` | Assembles a static folder: `public/`, the engine, the server modules it shares (presets, prompts, ad templates, compliance, captions), the brand files, the seed, the models with a manifest that names each by its hash, and the parts of ONNX Runtime Web that run them. `--strict` fails if the models or the runtime are missing; without it the demo is built with stand-ins in their place. |
 | `export-seed.mjs` | Exports the starting library (brand photos, two finished ads, two camera moves) from a running Kino. |
 | `seed/` | That library. Videos are re-encoded to 720p for the web. |
@@ -23,8 +23,18 @@ Real-ESRGAN for upscaling) and the rest are labelled stand-ins.
 npm install                                   # ONNX Runtime Web
 pip install onnx onnxruntime numpy
 python3 scripts/web-models.py                 # the two models, into web/models
-node web/build.mjs ../public/kino --strict    # the portfolio's deploy does all this on every push
+node web/build.mjs ../public/kino --strict    # add --fetch-models to skip the two lines above
 npx serve ../public                           # then open /kino/
+```
+
+jamesliuzx.com is served by Vercel. Every deploy of the portfolio
+(JamesLiuZX/james-portfolio) runs its `scripts/build-kino.mjs` first: it
+clones this repo's main, installs ONNX Runtime Web and runs
+`web/build.mjs public/kino --strict --fetch-models`. Then `next build` copies
+the result into the site at `/kino/`.
+
+```text
+kino main ──push──▶ Website workflow ──deploy hook──▶ Vercel: build-kino.mjs, next build ──▶ jamesliuzx.com/kino/
 ```
 
 What's real, as the site's Settings page says: camera moves, reframing, ad
@@ -40,8 +50,11 @@ and AI jobs go from the browser straight to fal.ai.
 module must stay free of Node built-ins, the seed must point at real files, and
 the models and runtime files must land where `ai.mjs` looks for them.
 
-The *Website* workflow checks the live site every day
-(`scripts/check-website.mjs`). The build records the commit it was made from,
+The *Website* workflow asks Vercel to rebuild the site when main changes
+what it's built from, if the `VERCEL_DEPLOY_HOOK` secret holds a deploy hook
+for the portfolio. It also checks the live site every day
+(`scripts/check-website.mjs`): it reports where the domain points and which
+host answers. The build records the commit it was made from,
 so the workflow can tell when main has changed the website since the last
 deploy. It then opens the site in Chromium and WebKit (Safari's engine) and
 checks that it starts without errors or missing files, that it has Recipes

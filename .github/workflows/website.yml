@@ -1,12 +1,21 @@
 name: Website
 
-# jamesliuzx.com/kino is Kino on the web, built from this repo's main by the
-# portfolio's deploy (JamesLiuZX/james-portfolio, "Deploy to GitHub Pages").
-# This opens the live site in Chromium and WebKit (Safari's engine) the way a
-# visitor does: it must be built from main's current website code and start
-# without errors (scripts/check-website.mjs). Daily, and by hand.
+# jamesliuzx.com/kino is Kino on the web. jamesliuzx.com is served by Vercel,
+# which builds it from JamesLiuZX/james-portfolio and builds Kino from this
+# repo's main into it (that repo's vercel.json and scripts/build-kino.mjs).
+#
+# redeploy: when main changes what the website is built from, ask Vercel to
+#   rebuild the site, if the VERCEL_DEPLOY_HOOK secret is set (a deploy hook
+#   for james-portfolio's main: Vercel → Project → Settings → Git → Deploy
+#   Hooks). Without it, the site updates on the portfolio's next deploy.
+# live: open the live site in Chromium and WebKit (Safari's engine) the way a
+#   visitor does: it must be built from main's current website code and start
+#   without errors (scripts/check-website.mjs). Daily, and by hand.
 
 on:
+  push:
+    branches: ["main"]
+    paths: ["public/**", "web/**", "src/**", "apps/**", "recipes/**", "brands/**", "package.json", "package-lock.json"]
   schedule:
     - cron: "23 5 * * *"
   workflow_dispatch:
@@ -19,7 +28,21 @@ permissions:
   contents: read
 
 jobs:
+  redeploy:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - env:
+          HOOK: ${{ secrets.VERCEL_DEPLOY_HOOK }}
+        run: |
+          if [ -z "$HOOK" ]; then
+            echo "::notice::No VERCEL_DEPLOY_HOOK secret: jamesliuzx.com/kino updates on the portfolio's next deploy."
+          else
+            curl -fsS -X POST "$HOOK" > /dev/null && echo "Vercel is rebuilding jamesliuzx.com."
+          fi
+
   live:
+    if: github.event_name != 'push'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:

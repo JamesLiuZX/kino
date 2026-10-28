@@ -1,0 +1,42 @@
+name: Web models
+
+# The two models the website runs on the visitor's device (web/README.md).
+# scripts/web-models.py makes them from their projects' releases; this
+# publishes them as the "web-models" release, so a website build on any host
+# downloads them (web/build.mjs --fetch-models) instead of making them.
+# Runs when the script changes, and by hand.
+
+on:
+  push:
+    branches: ["main"]
+    paths: ["scripts/web-models.py", ".github/workflows/web-models.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  models:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Make the models
+        run: |
+          pip install --quiet onnx onnxruntime numpy
+          python3 scripts/web-models.py web/models "$RUNNER_TEMP/model-sources"
+          ls -la web/models
+      # Never marked latest: releases/latest stays the desktop app.
+      - name: Publish them as the web-models release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          if ! gh release view web-models --repo "$REPO" > /dev/null 2>&1; then
+            gh release create web-models --repo "$REPO" --target "$GITHUB_SHA" --latest=false --title "Website models" \
+              --notes "The two models Kino's website runs on the visitor's device, made by scripts/web-models.py: IS-Net general use (Apache-2.0) for cut-outs and Real-ESRGAN general x4v3 (BSD-3-Clause) for upscaling. Website builds download them (web/build.mjs --fetch-models). The desktop app is in Kino's version releases."
+          fi
+          gh release upload web-models web/models/cutout.onnx web/models/upscale.onnx --repo "$REPO" --clobber

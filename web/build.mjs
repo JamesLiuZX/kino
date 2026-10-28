@@ -6,9 +6,11 @@
 // built-in recipes as they are in this checkout, the brand files, the seed
 // library, and the two models it runs on the visitor's device with ONNX
 // Runtime Web. The output is static: any web host serves it, e.g.
-// `node web/build.mjs ../public/kino --strict` for the portfolio's GitHub Pages
-// site. --strict fails the build when the models or the runtime are missing;
-// without it the demo is built with stand-ins in their place.
+// `node web/build.mjs ../public/kino --strict` for the portfolio's site.
+// --strict fails the build when the models or the runtime are missing; without
+// it the demo is built with stand-ins in their place. --fetch-models downloads
+// missing models from the web-models release (the Web models workflow), for
+// hosts that can't run scripts/web-models.py.
 
 import { execFileSync } from "node:child_process"
 import { createHash } from "node:crypto"
@@ -26,6 +28,7 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..")
 const args = process.argv.slice(2)
 const out = args.find((a) => !a.startsWith("--")) ?? join(ROOT, "web", "dist")
 const strict = args.includes("--strict")
+const fetchModels = args.includes("--fetch-models")
 
 // The in-browser models (made by scripts/web-models.py) and the parts of ONNX
 // Runtime Web that run them: WebGPU, and WebAssembly where there's no WebGPU.
@@ -91,6 +94,19 @@ for (const f of await readdir(join(ROOT, "brands"))) {
 
 // The models, with a manifest that names each file by its content so a new
 // model never comes out of a visitor's cache as the old one.
+const MODELS_URL = process.env.KINO_MODELS_URL ?? "https://github.com/JamesLiuZX/kino/releases/download/web-models"
+if (fetchModels) {
+  for (const m of Object.values(MODELS)) {
+    const to = join(ROOT, "web", "models", m.file)
+    if (existsSync(to)) continue
+    const res = await fetch(`${MODELS_URL}/${m.file}`)
+    if (!res.ok) throw new Error(`Couldn't download the ${m.label} from ${MODELS_URL}/${m.file} (${res.status}). Run the Web models workflow in JamesLiuZX/kino.`)
+    const bytes = Buffer.from(await res.arrayBuffer())
+    await mkdir(dirname(to), { recursive: true })
+    await writeFile(to, bytes)
+    console.log(`Downloaded the ${m.label}, ${(bytes.length / 1e6).toFixed(1)} MB`)
+  }
+}
 const missing = [
   ...Object.values(MODELS).map((m) => join(ROOT, "web", "models", m.file)),
   ...ORT_FILES.map((f) => join(ORT_DIST, f)),
