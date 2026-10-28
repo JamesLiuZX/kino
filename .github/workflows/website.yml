@@ -1,0 +1,39 @@
+name: Website
+
+# jamesliuzx.com/kino is Kino on the web, built from this repo's main by the
+# portfolio's deploy (JamesLiuZX/james-portfolio, "Deploy to GitHub Pages").
+# This opens the live site in Chromium and WebKit (Safari's engine) the way a
+# visitor does: it must be built from main's current website code and start
+# without errors (scripts/check-website.mjs). Daily, and by hand.
+
+on:
+  schedule:
+    - cron: "23 5 * * *"
+  workflow_dispatch:
+    inputs:
+      url:
+        description: The site to check
+        default: https://jamesliuzx.com/kino/
+
+permissions:
+  contents: read
+
+jobs:
+  live:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Playwright, with Chromium and WebKit
+        run: |
+          mkdir -p "$RUNNER_TEMP/pw" && cd "$RUNNER_TEMP/pw"
+          npm init -y > /dev/null && npm install --no-audit --no-fund playwright@1.56.1
+          npx playwright install --with-deps chromium webkit
+      - run: node scripts/check-website.mjs "${{ inputs.url || 'https://jamesliuzx.com/kino/' }}"
+        env:
+          PLAYWRIGHT: ${{ runner.temp }}/pw/node_modules/playwright/index.mjs

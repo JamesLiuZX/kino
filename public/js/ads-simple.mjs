@@ -4,7 +4,7 @@
 // makes the ad. You can leave while it works; the activity tray follows it.
 
 import { h, icon, api, toast, fail, store, aspectGlyph, copyText, timeAgo, fmtSeconds, confirmDialog, sheet, replace } from "./ui.mjs"
-import { state, on, cameraById, isDemo, isWeb, fullStudioUrl, watched } from "./state.mjs"
+import { state, on, cameraById, isDemo, isWeb, webCloud, watched } from "./state.mjs"
 import { cameraThumb, SCENE_URL } from "./pickers.mjs"
 import { download, ring } from "./media.mjs"
 import { briefEditor, editBrandSheet, postText, adShareButtons } from "./ads.mjs"
@@ -184,7 +184,7 @@ export function mountAdsSimple(root) {
       ctaEl,
       main,
       draft && !writing ? h("button.btn.ghost.small", { type: "button", style: { justifySelf: "center" }, onclick: write }, icon("refresh"), "Write another version") : null,
-      h("p.cta-note", {}, isWeb() ? [icon("info"), "Web demo: the edit is real, AI scenes are stand-ins. ", h("a.link", { href: fullStudioUrl(), target: "_blank", rel: "noopener" }, "Get the full studio")] : isDemo() ? [icon("info"), "Demo mode: shots are placeholders, the edit is real. ", h("a.link", { href: "#/settings" }, "Connect a GPU")] : [icon("shield"), "Checked against the brand's banned words and health-ad rules"]),
+      h("p.cta-note", {}, webCloud() ? [icon("bolt"), "AI scenes on fal.ai with your key; the edit runs in your browser."] : isWeb() ? [icon("info"), "The edit is real; AI scenes are stand-ins until you ", h("a.link", { href: "#/settings" }, "add your fal.ai key"), "."] : isDemo() ? [icon("info"), "Demo mode: shots are placeholders, the edit is real. ", h("a.link", { href: "#/settings" }, "Connect a GPU")] : [icon("shield"), "Checked against the brand's banned words and health-ad rules"]),
     )
   }
 

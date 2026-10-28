@@ -21,7 +21,9 @@ export function mountHome(root) {
 
   function renderHero() {
     const p = state.boot.provider
-    const status = webCloud() ? "Kino on the web · AI on fal.ai with your key" : isWeb() ? "Web demo · runs in your browser, nothing to install" : p.id === "mock" ? "Demo mode · try anything, nothing to set up" : p.id === "local" ? (needsSetup() ? "This computer · not set up yet" : "Running on this computer") : `Connected · ${p.id === "runpod" ? "RunPod" : "ComfyUI"}`
+    // On the website without a key, the eyebrow says how to make it all real.
+    const keyless = isWeb() && !webCloud()
+    const status = webCloud() ? "Kino on the web · AI on fal.ai with your key" : keyless ? "Kino on the web · nothing to install" : p.id === "mock" ? "Demo mode · try anything, nothing to set up" : p.id === "local" ? (needsSetup() ? "This computer · not set up yet" : "Running on this computer") : `Connected · ${p.id === "runpod" ? "RunPod" : "ComfyUI"}`
     replace(
       hero,
       h(
@@ -37,11 +39,11 @@ export function mountHome(root) {
         "div.hero-inner",
         {},
         h(
-          needsSetup() ? "a.eyebrow.rise" : "p.eyebrow.rise",
-          { style: { "--d": "0s" }, href: needsSetup() ? "#/welcome" : null },
+          needsSetup() || keyless ? "a.eyebrow.rise" : "p.eyebrow.rise",
+          { style: { "--d": "0s" }, href: needsSetup() ? "#/welcome" : keyless ? "#/settings" : null },
           h(`span.dot.${p.id === "mock" || needsSetup() ? "warn" : "ok"}.live`),
           status,
-          needsSetup() ? h("span.link", {}, " · set it up") : null,
+          needsSetup() ? h("span.link", {}, " · set it up") : keyless ? h("span.link", {}, " · add your fal.ai key to make everything for real") : null,
         ),
         h("h1.display", {}, wordsFor(["What will you", "make"], { delay: 0.05 }), h("span.word", {}, h("span", { style: { "--d": "0.32s" } }, " today?"))),
         h("p.lede.rise", { style: { "--d": "0.35s" } }, "Pick a task. Kino chooses the model, writes the prompt and does the editing. ", h("strong", {}, "You choose the photo, the moment and the look.")),

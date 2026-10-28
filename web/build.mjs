@@ -10,6 +10,7 @@
 // site. --strict fails the build when the models or the runtime are missing;
 // without it the demo is built with stand-ins in their place.
 
+import { execFileSync } from "node:child_process"
 import { createHash } from "node:crypto"
 import { existsSync } from "node:fs"
 import { cp, mkdir, readdir, readFile, rm, stat, writeFile } from "node:fs/promises"
@@ -56,7 +57,7 @@ for (const f of await readdir(join(ROOT, "public", "js"))) {
 let html = await readFile(join(ROOT, "public", "index.html"), "utf8")
 html = html
   .replace('<script type="module" src="js/main.mjs"></script>', '<script type="module" src="engine/engine.js"></script>\n<script type="module" src="js/main.js"></script>')
-  .replace(/<title>[^<]*<\/title>/, "<title>Kino · web demo</title>")
+  .replace(/<title>[^<]*<\/title>/, "<title>Kino · AI photo and video studio</title>")
   .replace(/<meta name="description" content="[^"]*">/, '<meta name="description" content="Kino, an AI image and video studio for small brands, running in your browser: guided tasks, camera moves and compliance-checked video ads.">')
 if (!html.includes("engine/engine.js")) throw new Error("index.html changed: couldn't add the web engine before main.js.")
 await writeFile(join(out, "index.html"), html)
@@ -76,7 +77,12 @@ await cp(join(ROOT, "web", "seed"), join(out, "engine", "seed"), { recursive: tr
 const seedBoot = JSON.parse(await readFile(join(ROOT, "web", "seed", "bootstrap.json"), "utf8"))
 const cat = catalogue(new Apps({ store: new Store(mkdtempSync(join(tmpdir(), "kino-web-"))) }))
 const version = JSON.parse(await readFile(join(ROOT, "package.json"), "utf8")).version
-await writeFile(join(out, "engine", "seed", "bootstrap.json"), JSON.stringify({ ...seedBoot, version, tools: cat.tools, apps: cat.apps, presets: cat.presets }))
+// The commit it's built from, so scripts/check-website.mjs can tell whether the live site is current.
+let commit = null
+try {
+  commit = execFileSync("git", ["rev-parse", "HEAD"], { cwd: ROOT, stdio: ["ignore", "pipe", "ignore"] }).toString().trim()
+} catch {}
+await writeFile(join(out, "engine", "seed", "bootstrap.json"), JSON.stringify({ ...seedBoot, version, build: { commit }, tools: cat.tools, apps: cat.apps, presets: cat.presets }))
 await writeFile(join(out, "engine", "seed", "recipes.json"), JSON.stringify(builtinRecipes()))
 await mkdir(join(out, "engine", "seed", "brands"), { recursive: true })
 for (const f of await readdir(join(ROOT, "brands"))) {

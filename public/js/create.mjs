@@ -3,7 +3,7 @@
 // everything else out of the way. Results stream into the feed above it.
 
 import { h, icon, api, upload, toast, fail, popover, closePopover, store, aspectGlyph, fmtSeconds, replace } from "./ui.mjs"
-import { state, on, isPart, appById, appsForTool, toolById, cameraById, styleById, audioById, aspectById, isDemo, isWeb, needsSetup, webLocal, fullStudioUrl, viewState } from "./state.mjs"
+import { state, on, isPart, appById, appsForTool, toolById, cameraById, styleById, audioById, aspectById, isDemo, isWeb, needsSetup, webLocal, viewState } from "./state.mjs"
 import { assetCard, jobCard, masonry } from "./media.mjs"
 import { openRecorder } from "./recorder.mjs"
 import { openCameraSheet, cameraThumb, aspectPicker, stylePicker, audioPicker, durationPicker, selectPicker, STYLE_SWATCH, AUDIO_ICON } from "./pickers.mjs"
@@ -152,9 +152,9 @@ export function mountCreate(root) {
             {},
             icon("info"),
             isWeb()
-              ? h("span", {}, h("strong", {}, "Web demo. "), "Everything runs in your browser. Camera moves, cut-outs, photo upscaling and ad edits are real; the other AI results are stand-ins, because those models need the full studio and a GPU.")
+              ? h("span", {}, h("strong", {}, "Kino on the web. "), "Camera moves, cut-outs, photo upscaling and ad edits run in your browser. Add your fal.ai key and every other AI app runs for real too, billed to your own fal.ai account; until then they make stand-ins.")
               : h("span", {}, h("strong", {}, "Demo mode. "), "Results are placeholders made on this computer, so you can try every tool. Connect a GPU (RunPod or your own ComfyUI) to use the real models."),
-            isWeb() ? h("a.btn.small", { href: fullStudioUrl(), target: "_blank", rel: "noopener" }, "Get Kino") : h("a.btn.small", { href: "#/settings" }, "Connect a GPU"),
+            h("a.btn.small", { href: "#/settings" }, isWeb() ? "Add your key" : "Connect a GPU"),
             h("button.icon-btn.ghost.small", { type: "button", "aria-label": "Dismiss", onclick: () => (store.set("demo-banner-dismissed", true), renderBanner()) }, icon("x")),
           )
         : needsSetup()

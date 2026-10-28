@@ -555,7 +555,7 @@ export function mountFlow(root, taskId) {
           ? local?.cloud
             ? [icon("bolt"), `Runs on fal.ai with your key · ${app.model}`]
             : app?.gpu && !local
-            ? [icon("info"), "Web demo: a stand-in made in your browser. ", h("a.link", { href: "#/settings" }, "Add your fal.ai key"), " to make it for real."]
+            ? [icon("info"), "A stand-in, made in your browser. ", h("a.link", { href: "#/settings" }, "Add your fal.ai key"), " to make it for real."]
             : [icon("check"), `Runs in your browser, for real${local?.note ? `. ${local.note}` : ""}`]
           : isDemo()
           ? [icon("info"), "Demo mode: a placeholder is made on this computer. ", h("a.link", { href: "#/settings" }, "Connect a GPU")]

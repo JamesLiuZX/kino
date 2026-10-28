@@ -225,7 +225,7 @@ function mountRecipe(root, id) {
       webCloud()
         ? h("p.small.muted.center", {}, "The AI steps run on fal.ai with your key, billed to your fal.ai account.")
         : isWeb()
-        ? h("p.small.muted.center", {}, "Web demo: the AI steps make stand-ins. ", h("a.link", { href: "#/settings" }, "Add your fal.ai key"), " to make them for real.")
+        ? h("p.small.muted.center", {}, "Without a key the AI steps make stand-ins. ", h("a.link", { href: "#/settings" }, "Add your fal.ai key"), " to make them for real.")
         : null,
     )
   }

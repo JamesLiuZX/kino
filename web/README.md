@@ -39,3 +39,10 @@ and AI jobs go from the browser straight to fal.ai.
 `test/web.test.mjs` keeps it honest: the build must succeed, every shared
 module must stay free of Node built-ins, the seed must point at real files, and
 the models and runtime files must land where `ai.mjs` looks for them.
+
+The *Website* workflow checks the live site every day
+(`scripts/check-website.mjs`). The build records the commit it was made from,
+so the workflow can tell when main has changed the website since the last
+deploy. It then opens the site in Chromium and WebKit (Safari's engine) and
+checks that it starts without errors or missing files, that it has Recipes
+and the fal.ai key card, and that it switches to fal.ai once a key is saved.

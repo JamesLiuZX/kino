@@ -73,7 +73,7 @@ const ready = load()
 function applyCloud(b) {
   const on = !!C.cloudKey()
   b.web = { ...b.web, cloud: on, recipes: true, keeps: true }
-  if (!on) return
+  if (!on) return void (b.provider = { ...b.provider, label: "Kino on the web" })
   b.provider = { id: "fal", label: "fal.ai · your key", web: true }
   for (const app of b.apps) {
     if (!C.ENDPOINTS[app.id]) continue
@@ -789,7 +789,7 @@ async function zipRun(id) {
 
 const ROUTES = [
   ["GET", /^\/api\/bootstrap$/, () => boot.value],
-  ["GET", /^\/api\/status$/, () => ({ ok: true, label: C.cloudKey() ? "Kino on the web: AI on fal.ai with your key" : "Web demo: everything runs in your browser", apps: {} })],
+  ["GET", /^\/api\/status$/, () => ({ ok: true, label: C.cloudKey() ? "Kino on the web: AI on fal.ai with your key" : "Kino on the web: add a fal.ai key in Settings to make everything for real", apps: {} })],
   ["GET", /^\/api\/assets$/, (m, q) => listAssets(q)],
   ["PATCH", /^\/api\/assets\/([^/]+)$/, ([, id], q, body) => {
     const a = assets.get(id)

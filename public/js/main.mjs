@@ -119,13 +119,13 @@ function renderStatus() {
   if (!statusEl) return
   const p = state.boot.provider
   const kind = p.error ? "bad" : p.id === "mock" || needsSetup() ? "warn" : "ok"
-  const text = webCloud() ? "fal.ai · your key" : isWeb() ? "Web demo" : providerName(p)
+  const text = webCloud() ? "fal.ai · your key" : isWeb() ? "Add a fal.ai key" : providerName(p)
   replace(statusEl, h(`span.dot.${kind}${kind === "ok" ? ".live" : ""}`), h("span.status-text", {}, text))
   statusEl.href = needsSetup() ? "#/welcome" : "#/settings"
   statusEl.title = webCloud()
     ? "Kino on the web: the AI apps run on fal.ai with your own key; camera moves, reframing and edits run in your browser."
     : isWeb()
-    ? "Web demo: everything runs in your browser. Cut-outs and upscaling run real models here; add your fal.ai key in Settings to run the rest for real."
+    ? "Kino on the web: camera moves, cut-outs, upscaling and edits run in your browser. The other AI apps make stand-ins until you add your fal.ai key in Settings."
     : p.id === "mock"
       ? "Demo mode: placeholder results made on this computer. Connect a GPU in Settings."
       : needsSetup()
