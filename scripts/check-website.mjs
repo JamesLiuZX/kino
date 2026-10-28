@@ -8,6 +8,7 @@
 // Needs Playwright: the Website workflow installs it and points PLAYWRIGHT at it.
 
 import { execFileSync } from "node:child_process"
+import { promises as dns } from "node:dns"
 import { pathToFileURL } from "node:url"
 
 const { chromium, webkit } = await import(process.env.PLAYWRIGHT ? pathToFileURL(process.env.PLAYWRIGHT).href : "playwright")
@@ -15,6 +16,18 @@ const base = process.argv[2] ?? "https://jamesliuzx.com/kino/"
 let failed = 0
 const fail = (msg) => (failed++, console.log(`FAIL  ${msg}`))
 const ok = (msg) => console.log(`ok    ${msg}`)
+
+// Who answers for the site: the portfolio deploys it to GitHub Pages, so a
+// domain pointed elsewhere (Vercel, say) serves a site without Kino in it.
+const host = new URL(base).hostname
+const records = [...(await dns.resolveCname(host).catch(() => [])), ...(await dns.resolve4(host).catch(() => []))]
+const PAGES = /^185\.199\.(108|109|110|111)\.153$|\.github\.io$/
+console.log(`info  ${host} → ${records.join(", ") || "nothing"}${records.length ? (records.every((r) => PAGES.test(r)) ? " (GitHub Pages)" : records.some((r) => /vercel/.test(r) || r === "76.76.21.21") ? " (Vercel)" : "") : ""}`)
+for (const url of [new URL("/", base).href, base]) {
+  const r = await fetch(url, { redirect: "manual" }).catch((e) => ({ status: e.cause?.code ?? e.message, headers: new Headers() }))
+  const by = r.headers.get("x-vercel-id") ? "Vercel" : r.headers.get("x-github-request-id") ? "GitHub Pages" : (r.headers.get("server") ?? "?")
+  console.log(`info  ${url} → ${r.status} from ${by}${r.headers.get("location") ? `, to ${r.headers.get("location")}` : ""}`)
+}
 
 // Built from main? Only the files the website is built from count.
 const INPUTS = ["public", "web", "src", "apps", "recipes", "brands", "package.json", "package-lock.json"]
