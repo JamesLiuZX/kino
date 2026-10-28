@@ -14,7 +14,7 @@ every model and takes what Kino sends.
 **Opening the Mac app the first time.** Until there's a Developer ID, the
 installer window and the release notes say how to open an app Apple hasn't
 checked; once the signing secrets are added, the Desktop workflow signs and
-notarizes it ([docs/signing.md](docs/signing.md)).
+notarizes it ([how to sign it](https://github.com/JamesLiuZX/kino/blob/main/docs/signing.md)).
 
 ## 0.3.0
 
